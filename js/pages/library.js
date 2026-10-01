@@ -42,7 +42,7 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
   const shown = useMemo(() => sortEntries(base.filter((e) => matchRules(e, {
     statuses: f.status ? [f.status] : [], yearFrom: f.year, yearTo: f.year, minRating: f.minRating,
     genres: f.genre ? [f.genre] : [], formats: f.format ? [f.format] : [], platform: f.platform, text: f.text,
-  }) && (!f.eps || (e.type === 'series' && (e.watchedEpisodes || []).length >= 1 && (e.watchedEpisodes || []).length <= Number(f.eps)))
+  }) && (!f.eps || (e.type === 'series' && (e.watchedEpisodes || []).length <= Number(f.eps)))
     && (!f.src || (f.src === 'import' ? e.source?.name === 'import' : e.source?.name !== 'import'))), f.sort), [entries, JSON.stringify(f)]);
 
   const anyFilter = f.status || f.year || f.minRating || f.genre || f.platform || f.format || f.text || f.eps || f.src;
@@ -83,7 +83,7 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
             <option value="">Cualquier plataforma</option>${platforms.map((p) => html`<option>${p}</option>`)}
           </select>`}
           ${(!f.type || f.type === 'series') && html`<select class="select" value=${f.eps} title="Series con pocos episodios vistos: útil para limpiar importaciones" onChange=${(e) => set({ eps: e.currentTarget.value })}>
-            <option value="">Episodios vistos</option><option value="1">Solo 1 episodio</option><option value="2">1–2 episodios</option><option value="5">Hasta 5 episodios</option>
+            <option value="">Episodios vistos</option><option value="0">Ninguno marcado</option><option value="1">Como mucho 1</option><option value="2">Como mucho 2</option><option value="5">Como mucho 5</option>
           </select>`}
           <select class="select" value=${f.src} onChange=${(e) => set({ src: e.currentTarget.value })}>
             <option value="">Cualquier origen</option><option value="import">Importados</option><option value="manual">Añadidos a mano</option>
