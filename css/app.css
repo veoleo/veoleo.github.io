@@ -42,7 +42,7 @@
 }
 
 * { box-sizing: border-box; }
-html { font-size: 17px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; color-scheme: dark; }
+html { font-size: 17px; -webkit-text-size-adjust: 100%; color-scheme: dark; }
 body {
   margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
   font-family: var(--f-body); line-height: 1.55; overflow-x: hidden;
@@ -872,3 +872,33 @@ a.stat:hover::before { width: 100%; }
 .about-contact { margin-top: 72px; padding-top: 40px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; }
 .about-contact .mail { font-family: var(--f-display); font-stretch: 110%; font-weight: 800; font-size: clamp(1.3rem, 3vw, 2.4rem); color: var(--accent); text-decoration: none; overflow-wrap: anywhere; letter-spacing: -.01em; }
 .about-contact .mail:hover { text-shadow: 0 0 24px rgba(198, 255, 61, .5); }
+
+/* ── móvil: «Más» ── */
+.bottom-nav button { border: 0; background: none; cursor: pointer; display: grid; place-items: center; gap: 4px; font-family: var(--f-mono); font-size: .64rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); padding: 4px 6px; min-width: 56px; }
+.bottom-nav button .ico { width: 21px; height: 21px; }
+.bottom-nav button.on { color: var(--accent); }
+.more-sheet { position: fixed; inset: 0; z-index: 58; background: rgba(5, 6, 10, .72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; align-items: flex-end; animation: fadeIn .25s var(--ease); }
+.more-in { width: 100%; max-height: 86vh; overflow: auto; background: var(--bg-2); border-top: 1px solid var(--line-2); padding: 20px 20px calc(96px + env(safe-area-inset-bottom)); animation: sheetUp .4s var(--ease); }
+@keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } }
+@keyframes fadeIn { from { opacity: 0; } }
+.more-link { display: flex; align-items: center; gap: 16px; padding: 15px 4px; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; font-family: var(--f-display); font-stretch: 112%; font-weight: 700; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .01em; }
+.more-link .ico { width: 22px; height: 22px; color: var(--accent); }
+.more-link:active { background: var(--surface-2); }
+.more-link.coffee-link { font-family: var(--f-mono); font-size: .8rem; font-weight: 500; color: var(--muted); border-bottom: 0; }
+.more-link.coffee-link .ico { color: var(--muted); width: 18px; height: 18px; }
+
+.coffee-quiet { display: inline-flex; align-items: center; gap: 8px; font: 500 .74rem var(--f-mono); letter-spacing: .06em; color: var(--muted); text-decoration: none; opacity: .75; transition: color .25s, opacity .25s; }
+.coffee-quiet .ico { width: 15px; height: 15px; }
+.coffee-quiet:hover { color: #ffdd00; opacity: 1; }
+.chip-off .chip { opacity: .38; }
+
+/* ── tarjetas para compartir ── */
+.sharecard { display: grid; grid-template-columns: minmax(0, 360px) 1fr; gap: 36px; align-items: start; }
+.sc-prev { position: relative; background: #000; box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .9); }
+.sc-prev canvas { display: block; width: 100%; height: auto; }
+.sc-prev.story { aspect-ratio: 9 / 16; }
+.sc-prev.post { aspect-ratio: 4 / 5; }
+.sc-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5, 6, 10, .55); }
+@media (max-width: 760px) { .sharecard { grid-template-columns: 1fr; } .sc-prev { max-width: 300px; margin: 0 auto; } }
+
+.btn.excel { --c: #21a366; --fg: #fff; }
