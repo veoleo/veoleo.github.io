@@ -256,6 +256,38 @@ const EN = {
 
   'Buscando sinopsis…': 'Looking for a synopsis…', 'Más': 'More', 'Secciones': 'Sections', 'Más secciones': 'More sections', 'Mi perfil': 'My profile',
 
+
+  // importar de plataformas y guía
+  'Pegar lista': 'Paste list', 'Plataformas': 'Platforms', 'Canales de TV': 'TV channels', 'Todas': 'All',
+  'La sesión había caducado. Cierra sesión, vuelve a entrar e importa de nuevo: lo que ya se guardó no se duplicará.': "Your session had expired. Sign out, sign back in and import again: anything already saved won't be duplicated.",
+  'amazon.es → Cuenta → «Solicitar mis datos» → Prime Video. Amazon te envía un ZIP: sube el CSV del historial de visionado (o el ZIP entero).': 'amazon.com → Account → "Request your data" → Prime Video. Amazon sends you a ZIP: upload the viewing history CSV (or the whole ZIP).',
+  'privacy.apple.com → «Obtener una copia de tus datos» → Apple Media Services. Sube el CSV de actividad de la app TV. También puedes pegar la lista.': 'privacy.apple.com → "Get a copy of your data" → Apple Media Services. Upload the TV app activity CSV. You can also paste the list.',
+  'Disney+ no ofrece descarga del historial. Copia los títulos de «Seguir viendo» y tu lista y pégalos aquí, uno por línea.': 'Disney+ has no history download. Copy the titles from "Continue watching" and your list and paste them here, one per line.',
+  'HBO Max no permite descargar el historial. Pega los títulos que has visto, uno por línea («Serie: Temporada 1: Episodio» o solo el título).': 'HBO Max has no history download. Paste the titles you watched, one per line ("Series: Season 1: Episode" or just the title).',
+  'Movistar Plus+ no tiene exportación. Pega la lista de lo que has visto, uno por línea; se marca con la plataforma Movistar Plus+.': 'Movistar Plus+ has no export. Paste what you watched, one per line; it will be tagged with Movistar Plus+.',
+  'Filmin no tiene exportación. Copia los títulos de «Vistas» o «Mi lista» y pégalos aquí, uno por línea.': 'Filmin has no export. Copy the titles from "Watched" or "My list" and paste them here, one per line.',
+  'SkyShowtime no tiene exportación. Pega los títulos, uno por línea.': 'SkyShowtime has no export. Paste the titles, one per line.',
+
+
+  // tarjetas para compartir
+  'He terminado': 'I finished', 'He visto': 'I watched', 'He leído': 'I read', 'He escuchado': 'I listened to', 'Al día con': 'Up to date with',
+  'Estoy viendo': "I'm watching", 'Estoy leyendo': "I'm reading", 'Estoy escuchando': "I'm listening to", 'En mi lista': 'On my list', 'He abandonado': 'I dropped',
+  'Temporada': 'Season', 'Horas': 'Hours', 'Minutos': 'Minutes', 'Veces vista': 'Times watched', 'Día': 'Day', 'Días': 'Days',
+  '★ Obra maestra': '★ Masterpiece', 'Maratón': 'Binge', 'Lectura larga': 'Long read', 'Revisionado': 'Rewatch',
+  'Tarjeta para Instagram': 'Instagram card', 'Tarjeta': 'Card', 'Compartir enlace': 'Share link', 'Color': 'Color', 'Insignias': 'Badges',
+  'Incluir un trozo de mi nota': 'Include part of my note', "Incluir mi nota (aún no has escrito)": "Include my note (you haven't written one yet)",
+  'En el móvil, «Compartir» abre Instagram, WhatsApp y el resto de apps. En el ordenador se descarga el PNG.': 'On your phone, "Share" opens Instagram, WhatsApp and other apps. On a computer the PNG is downloaded.',
+  'Imagen descargada: súbela a Instagram desde tu galería': 'Image downloaded: upload it to Instagram from your gallery', 'Tarjeta lista': 'Card ready',
+  'Story 9:16': 'Story 9:16', 'Post 4:5': 'Post 4:5', 'PNG': 'PNG',
+
+
+  // excel
+  'Excel con portadas': 'Excel with covers', 'Excel con portadas (.xlsx)': 'Excel with covers (.xlsx)', 'Descargar .xlsx': 'Download .xlsx',
+  'Una hoja por tipo con portada, estado, estrellas, fechas, progreso, plataforma y tus notas, más una hoja de resumen. Filtros y cabecera fija.': 'One sheet per type with cover, status, stars, dates, progress, platform and your notes, plus a summary sheet. Filters and frozen header.',
+  'Una hoja por tipo con portada, estado, estrellas, fechas, progreso y tus notas, más un resumen.': 'One sheet per type with cover, status, stars, dates, progress and your notes, plus a summary.',
+  'No hay títulos de ese año': 'No titles from that year', 'Resumen ': 'Summary', 'Todo tu diario': 'Your whole diary', 'exportado el': 'exported on', 'Total': 'Total',
+  'Portada': 'Cover', 'Autoría': 'Author', 'Enlace': 'Link',
+
   // géneros
   'Acción': 'Action', 'Acción y aventura': 'Action & adventure', 'Aventura': 'Adventure', 'Animación': 'Animation', 'Anime': 'Anime', 'Biografía': 'Biography', 'Comedia': 'Comedy',
   'Crimen': 'Crime', 'Documental': 'Documentary', 'Drama': 'Drama', 'Familia': 'Family', 'Fantasía': 'Fantasy', 'Historia': 'History', 'Terror': 'Horror', 'Musical': 'Musical',
@@ -267,6 +299,11 @@ const EN = {
 };
 
 const PATTERNS = [
+  [/^(\d+) en Excel$/, '$1 in Excel'],
+  [/^Nº (\d+) de (\d{4})$/, 'No. $1 of $2'], [/^Reto (\d{4}): (\d+)\/(\d+)$/, '$1 challenge: $2/$3'],
+  [/^Otras plataformas \((\d+)\)$/, 'Other platforms ($1)'], [/^Revisar (\d*)$/, 'Review $1'],
+  [/^(\d+) LÍNEAS · SE MARCARÁN CON LA PLATAFORMA (.*)$/, '$1 LINES · WILL BE TAGGED WITH $2'],
+  [/^Hoy no hay estrenos de episodios en (.+)\. Prueba otro día o quita filtros\.$/, 'No new episodes on $1 that day. Try another day or clear filters.'],
   [/^(\d+) entradas ahora (privadas|públicas)$/, (m, n, w) => `${n} entries now ${w === 'privadas' ? 'private' : 'public'}`],
   [/^¿Qué te está pareciendo (.+)\?$/, 'What do you think of $1 so far?'], [/^Progreso · (\d+)%$/, 'Progress · $1%'],
   [/^Valoración ([\d.]+) de 5$/, 'Rating $1 of 5'],

@@ -203,6 +203,8 @@ export function loadScript(src) {
 export function img(url, w = 360) {
   if (!url) return '';
   const u = String(url);
+  // TVMaze ya sirve tamaño póster: sin pasar por el redimensionador (más fiable en móvil).
+  if (/static\.tvmaze\.com\/uploads\/images\//.test(u)) return w <= 400 ? u.replace(/\/(original_untouched|large_landscape|medium_portrait)\//, '/medium_portrait/') : u;
   if (/m\.media-amazon\.com/.test(u)) return u.replace(/\._V1_.*\.(jpg|png)$/, `._V1_SX${w}.jpg`);
   if (/mzstatic\.com/.test(u)) return u.replace(/\/(\d+)x(\d+)bb\.(jpg|png)$/, (m, a, b) => `/${w}x${Math.round((w * b) / a)}bb.jpg`);
   if (/image\.tmdb\.org/.test(u)) return u.replace(/\/t\/p\/(w\d+|original)\//, `/t/p/${w <= 185 ? 'w185' : w <= 342 ? 'w342' : w <= 500 ? 'w500' : w <= 780 ? 'w780' : 'w1280'}/`);

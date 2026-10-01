@@ -1,7 +1,7 @@
 // Sincronización de series con su emisión real (TVMaze):
 //  · reconcilia estados (Viendo → Al día → Vista) al entrar en la app
 //  · calcula tus próximos episodios y los emitidos que te faltan por ver
-import { showInfo, seriesStatusFor, memoize, overviewFor } from './metadata.js';
+import { showInfo, seriesStatusFor, memoize, overviewFor, canonPlatform } from './metadata.js';
 import { updateEntry } from './db.js';
 import { todayISO } from './utils.js';
 
@@ -56,7 +56,7 @@ export function myEpisodes(entries) {
     await pool(series, 4, async (e) => {
       const info = await showInfo(e);
       if (!info) return;
-      const platform = e.network || info.network || e.platform || '';
+      const platform = canonPlatform(e.network || info.network || e.platform || '') === 'Otros' ? '' : canonPlatform(e.network || info.network || e.platform || '');
       for (const x of info.upcoming) if (x.airdate <= limit) upcoming.push({ ...x, e, platform });
       const watched = new Set(e.watchedEpisodes || []);
       if (e.status !== 'planned') {

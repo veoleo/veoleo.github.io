@@ -97,6 +97,7 @@ function detect(rows, filename = '') {
   if (has('exclusive shelf') || (has('title', 'author') && h.includes('my rating'))) return 'goodreads';
   if (has('const', 'your rating') || has('const', 'title type')) return 'imdb';
   if (h.some((x) => /tv_show_name|series_name|show_name|episode_season_number|movie_name/.test(x)) || /tvtime|tv-time|tracking|seen_episode|followed/i.test(filename)) return 'tvtime';
+  if (TITLE_COLS.some((c) => h.includes(c))) return 'generic';
   return '';
 }
 
@@ -188,23 +189,31 @@ function netflixDate(s) {
   const [d, mo] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]; // ambiguo → día/mes (formato español)
   return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
+const EPISODE_RE = /^(episode|episodio|capítulo|capitulo|chapter|ep\.?)\s*\d+/i;
 function fromNetflix(rows) {
   const shows = new Map(); const movies = new Map();
+  const titleOf = (r) => String(r.Title || r.title || r.Título || '').trim();
+  // Un mismo prefijo «Serie: …» que aparece varias veces es una serie aunque Netflix no ponga «Temporada»
+  // (miniseries y series limitadas).
+  const prefixCount = new Map();
+  for (const r of rows) { const p = titleOf(r).split(': '); if (p.length > 1) prefixCount.set(p[0], (prefixCount.get(p[0]) || 0) + 1); }
+  const addEp = (name, season, ep, date) => {
+    const s = shows.get(name) || base('series', name, { status: 'in_progress', platform: 'Netflix', _nf: {}, _dates: [] });
+    (s._nf[season] = s._nf[season] || new Set()).add(ep);
+    if (date) s._dates.push(date);
+    shows.set(name, s);
+  };
   for (const r of rows) {
-    const title = r.Title || r.title || r.Título || '';
-    const date = netflixDate(r.Date || r.date || r.Fecha || '');
+    const title = titleOf(r);
+    const date = netflixDate(r.Date || r.date || r.Fecha || r['Start Time'] || '');
     if (!title) continue;
     const parts = title.split(': ');
     const si = parts.findIndex((p, i) => i > 0 && SEASON_RE.test(p));
     if (si > 0) {
-      const name = parts.slice(0, si).join(': ');
       const m = parts[si].match(SEASON_RE);
-      const season = m && m[2] ? Number(m[2]) : 1;
-      const s = shows.get(name) || base('series', name, { status: 'in_progress', platform: 'Netflix', _nf: {}, _dates: [] });
-      const ep = parts.slice(si + 1).join(': ') || parts[si];
-      (s._nf[season] = s._nf[season] || new Set()).add(ep);
-      if (date) s._dates.push(date);
-      shows.set(name, s);
+      addEp(parts.slice(0, si).join(': '), m && m[2] ? Number(m[2]) : 1, parts.slice(si + 1).join(': ') || parts[si], date);
+    } else if (parts.length > 1 && (prefixCount.get(parts[0]) >= 2 || EPISODE_RE.test(parts[1]))) {
+      addEp(parts[0], 1, parts.slice(1).join(': '), date);
     } else {
       const mv = movies.get(title) || base('movie', title, { status: 'completed', platform: 'Netflix', finishedAt: date });
       if (date && (!mv.finishedAt || date > mv.finishedAt)) mv.finishedAt = date;
@@ -222,6 +231,44 @@ function fromNetflix(rows) {
   return [...out, ...movies.values()];
 }
 
+// Historiales de otras plataformas (Prime Video, Apple TV…) o cualquier CSV con una columna de título.
+const TITLE_COLS = ['title', 'título', 'titulo', 'title name', 'content title', 'program title', 'show title', 'nombre', 'name', 'película', 'pelicula', 'serie', 'series', 'contenido'];
+const SERIES_COLS = ['series title', 'series name', 'show name', 'show', 'serie', 'nombre de la serie'];
+const SEASON_COLS = ['season', 'season number', 'temporada'];
+const EPISODE_COLS = ['episode title', 'episode name', 'episode', 'episodio', 'título del episodio'];
+const DATE_COLS = ['date', 'fecha', 'start time', 'playback start', 'playback date', 'watched', 'watch date', 'last watched', 'date watched', 'event start timestamp', 'timestamp'];
+export const PLATFORM_FILES = [
+  [/prime|amazon/i, 'Prime Video'], [/apple|tv[ _-]?app|play[ _-]?activity/i, 'Apple TV+'], [/disney/i, 'Disney+'], [/hbo|\bmax\b/i, 'HBO Max'],
+  [/movistar/i, 'Movistar Plus+'], [/filmin/i, 'Filmin'], [/skyshowtime/i, 'SkyShowtime'],
+];
+function fromGeneric(rows, filename, platform = '') {
+  const keys = Object.keys(rows[0] || {});
+  const col = (list) => keys.find((k) => list.includes(k.toLowerCase().trim()));
+  const cT = col(TITLE_COLS), cS = col(SERIES_COLS), cSe = col(SEASON_COLS), cE = col(EPISODE_COLS), cD = col(DATE_COLS);
+  const plat = platform || PLATFORM_FILES.find(([re]) => re.test(filename))?.[1] || '';
+  const norm = rows.map((r) => {
+    const series = cS ? String(r[cS] || '').trim() : '';
+    const ep = cE ? String(r[cE] || '').trim() : '';
+    const season = cSe ? String(r[cSe] || '').replace(/\D/g, '') : '';
+    let title = series && ep ? `${series}: Season ${season || 1}: ${ep}` : String((cT && r[cT]) || series || '').trim();
+    if (!series && ep && title && ep !== title) title = `${title}: Season ${season || 1}: ${ep}`;
+    // «The Boys - Temporada 1 - Episodio 3» → formato Netflix.
+    title = title.replace(/\s+[-–]\s+(?=(temporada|season|episodio|episode|cap[ií]tulo)\b)/gi, ': ');
+    return { Title: title, Date: cD ? String(r[cD] || '').slice(0, 10) : '' };
+  }).filter((r) => r.Title);
+  return fromNetflix(norm).map((e) => ({ ...e, platform: plat }));
+}
+// Lista pegada a mano (una línea por título). Formatos: «Serie: Temporada 1: Episodio», «Película», «Título (2021)».
+export function parseTitleList(text, platform = '') {
+  const rows = String(text || '').split(/\r?\n/).map((l) => l.replace(/^[-*•\d.)\s]+(?=\D)/, '').trim()).filter(Boolean)
+    .map((l) => ({ Title: l.replace(/\s+[-–]\s+(?=(temporada|season|episodio|episode|cap[ií]tulo)\b)/gi, ': '), Date: '' }));
+  const items = fromNetflix(rows).map((e) => {
+    const m = e.title.match(/^(.*)\s\((\d{4})\)$/);
+    return { ...e, platform, ...(m ? { title: m[1], year: Number(m[2]) } : {}) };
+  });
+  return { format: platform || 'Lista', items };
+}
+
 async function readZip(file) {
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
   const zip = await window.JSZip.loadAsync(file);
@@ -234,7 +281,7 @@ async function readZip(file) {
 }
 
 // Lee uno o varios ficheros (CSV, JSON o ZIP) y devuelve { format, items, notes, lists }.
-export async function parseImport(files) {
+export async function parseImport(files, { platform = '' } = {}) {
   let texts = [];
   for (const f of files) {
     if (/\.zip$/i.test(f.name)) texts.push(...await readZip(f));
@@ -247,7 +294,9 @@ export async function parseImport(files) {
   }
   const csvs = texts.filter((t) => /\.csv$/i.test(t.name)).map((t) => ({ name: t.name, rows: parseCSV(t.text) })).filter((x) => x.rows.length);
   if (!csvs.length) throw new Error('No se han encontrado ficheros CSV o JSON reconocibles.');
-  const formats = csvs.map((c) => detect(c.rows, c.name));
+  let formats = csvs.map((c) => detect(c.rows, c.name));
+  // Si hay un formato conocido (TV Time, Netflix…), los demás CSV del ZIP no se importan como genéricos.
+  if (formats.some((f) => f && f !== 'generic')) formats = formats.map((f) => (f === 'generic' ? '' : f));
   const items = [];
   const tv = csvs.filter((c, i) => formats[i] === 'tvtime');
   if (tv.length) items.push(...fromTVTime(tv));
@@ -256,8 +305,9 @@ export async function parseImport(files) {
     if (formats[i] === 'netflix') items.push(...fromNetflix(c.rows));
     if (formats[i] === 'goodreads') items.push(...fromGoodreads(c.rows));
     if (formats[i] === 'imdb') items.push(...fromIMDb(c.rows));
+    if (formats[i] === 'generic') items.push(...fromGeneric(c.rows, c.name, platform));
   });
-  const fmt = uniq(formats.filter(Boolean));
+  const fmt = uniq(formats.filter(Boolean).map((f) => (f === 'generic' ? (platform || PLATFORM_FILES.find(([re]) => csvs.some((c) => re.test(c.name)))?.[1] || 'CSV') : f)));
   if (!items.length) throw new Error('Formato no reconocido. Admite exportaciones de TV Time, Netflix, Letterboxd, Goodreads, IMDb y copias de Veoleo.');
   // Fusiona duplicados (p. ej. diary.csv + ratings.csv de Letterboxd).
   const merged = new Map();
@@ -271,13 +321,17 @@ export async function parseImport(files) {
   return { format: fmt.join(' + '), items: [...merged.values()], notes: {}, lists: [] };
 }
 
+// Título normalizado para detectar duplicados aunque cambien año, mayúsculas o signos («The Americans (2013)» = «The Americans»).
+export const normTitle = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/\(\d{4}\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+export const dupKey = (e) => `${e.type}|${normTitle(e.title)}`;
+
 export async function runImport(parsed, existing, { skipDuplicates = true } = {}, onProgress = () => {}) {
-  const key = (e) => `${e.type}|${String(e.title).toLowerCase()}|${e.year || ''}`;
-  const have = new Set(existing.map(key));
-  const todo = parsed.items.filter((e) => !skipDuplicates || !have.has(key(e)));
+  const have = new Set(existing.map(dupKey));
+  const todo = parsed.items.filter((e) => !skipDuplicates || !have.has(dupKey(e)));
   const clean = todo.map(({ id, _oldId, _note, _tvdb, _nfSeasons, ownerId, ownerName, ownerHandle, ownerPhoto, createdAt, updatedAt, ...rest }) => rest);
   onProgress('Guardando', 0, clean.length);
-  const ids = await importEntries(clean);
+  const ids = await importEntries(clean, (d, t) => onProgress('Guardando', d, t));
   for (let i = 0; i < todo.length; i++) {
     const note = parsed.format === 'veoleo' ? parsed.notes[todo[i]._oldId]?.body : todo[i]._note;
     const pub = parsed.format === 'veoleo' ? !!parsed.notes[todo[i]._oldId]?.isPublic : false;
@@ -302,7 +356,17 @@ export async function autoEnrich(items, settings, onProgress = () => {}) {
         }
         if (!hit && !e.cover) {
           const res = await searchMedia(e.type, e.title, settings);
-          hit = res.find((x) => !e.year || !x.year || Math.abs(x.year - e.year) <= 1) || res[0];
+          hit = res.find((x) => normTitle(x.title) === normTitle(e.title) && (!e.year || !x.year || Math.abs(x.year - e.year) <= 1))
+            || res.find((x) => !e.year || !x.year || Math.abs(x.year - e.year) <= 1) || res[0];
+          // «Serie: Episodio» que Netflix lista sin temporada y se tomó por película: si la serie existe, se corrige.
+          if (e.type === 'movie' && (!hit || normTitle(hit.title) !== normTitle(e.title))) {
+            const prefix = e.title.includes(': ') ? e.title.split(': ')[0] : e.title;
+            const show = (await searchMedia('series', prefix, settings).catch(() => [])).find((x) => normTitle(x.title) === normTitle(prefix));
+            if (show) {
+              const fix = { type: 'series', title: show.title, status: 'in_progress', finishedAt: '', startedAt: e.finishedAt || e.startedAt || '' };
+              await updateEntry(e.id, fix); Object.assign(e, fix); hit = show;
+            }
+          }
         }
         if (hit) {
           const patch = {
@@ -371,6 +435,13 @@ export const IMPORT_HELP = [
   { id: 'letterboxd', name: 'Letterboxd', how: 'letterboxd.com → Settings → Import & Export → Export your data. Sube el ZIP o diary.csv / ratings.csv / watchlist.csv.' },
   { id: 'goodreads', name: 'Goodreads', how: 'goodreads.com → My Books → Import and export → Export Library. Sube goodreads_library_export.csv.' },
   { id: 'imdb', name: 'IMDb', how: 'imdb.com → Your ratings / Watchlist → Export. Sube el CSV.' },
+  { id: 'prime', name: 'Prime Video', platform: 'Prime Video', how: 'amazon.es → Cuenta → «Solicitar mis datos» → Prime Video. Amazon te envía un ZIP: sube el CSV del historial de visionado (o el ZIP entero).' },
+  { id: 'apple', name: 'Apple TV+', platform: 'Apple TV+', how: 'privacy.apple.com → «Obtener una copia de tus datos» → Apple Media Services. Sube el CSV de actividad de la app TV. También puedes pegar la lista.' },
+  { id: 'disney', name: 'Disney+', platform: 'Disney+', paste: true, how: 'Disney+ no ofrece descarga del historial. Copia los títulos de «Seguir viendo» y tu lista y pégalos aquí, uno por línea.' },
+  { id: 'hbo', name: 'HBO Max', platform: 'HBO Max', paste: true, how: 'HBO Max no permite descargar el historial. Pega los títulos que has visto, uno por línea («Serie: Temporada 1: Episodio» o solo el título).' },
+  { id: 'movistar', name: 'Movistar Plus+', platform: 'Movistar Plus+', paste: true, how: 'Movistar Plus+ no tiene exportación. Pega la lista de lo que has visto, uno por línea; se marca con la plataforma Movistar Plus+.' },
+  { id: 'filmin', name: 'Filmin', platform: 'Filmin', paste: true, how: 'Filmin no tiene exportación. Copia los títulos de «Vistas» o «Mi lista» y pégalos aquí, uno por línea.' },
+  { id: 'skyshowtime', name: 'SkyShowtime', platform: 'SkyShowtime', paste: true, how: 'SkyShowtime no tiene exportación. Pega los títulos, uno por línea.' },
   { id: 'veoleo', name: 'Veoleo', how: 'Una copia de seguridad JSON exportada desde esta misma app (incluye notas).' },
 ];
 

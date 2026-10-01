@@ -350,19 +350,35 @@ export async function publicListsOf(uid) {
   return (await getDocs(q)).docs.map(withId);
 }
 
-export async function importEntries(items) {
+export async function importEntries(items, onProgress = () => {}) {
   const uid = uidOrThrow();
   const own = ownerFields();
+  // Token fresco antes de una escritura larga (en móvil la sesión puede haber caducado en segundo plano).
+  await auth.currentUser?.getIdToken(true).catch(() => {});
   const ids = [];
-  for (let i = 0; i < items.length; i += 400) {
-    const b = writeBatch(db);
-    for (const it of items.slice(i, i + 400)) {
-      const ref = doc(collection(db, 'entries'));
-      ids.push(ref.id);
-      const visibility = defaultVisibility() === 'private' ? 'private' : (it.visibility === 'private' ? 'private' : 'public');
-      b.set(ref, clean({ ...it, visibility, ownerId: uid, ...own, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+  const STEP = 150;
+  for (let i = 0; i < items.length; i += STEP) {
+    const chunk = items.slice(i, i + STEP);
+    const write = async () => {
+      const b = writeBatch(db); const chunkIds = [];
+      for (const it of chunk) {
+        const ref = doc(collection(db, 'entries'));
+        chunkIds.push(ref.id);
+        const visibility = defaultVisibility() === 'private' ? 'private' : (it.visibility === 'private' ? 'private' : 'public');
+        b.set(ref, clean({ ...it, visibility, ownerId: uid, ...own, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+      }
+      await b.commit();
+      return chunkIds;
+    };
+    let got;
+    try { got = await write(); }
+    catch (e) {
+      if (e?.code !== 'permission-denied') throw e;
+      await auth.currentUser?.getIdToken(true);
+      got = await write();
     }
-    await b.commit();
+    ids.push(...got);
+    onProgress(ids.length, items.length);
   }
   return ids;
 }

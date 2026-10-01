@@ -770,6 +770,24 @@ export function seriesStatusFor(e, info, watchedList = e.watchedEpisodes || []) 
 }
 
 // Programación de un día: streaming global + TV de un país, ya simplificada.
+// Nombres de plataforma unificados (TVMaze usa «Apple TV», «Max», «Amazon Prime Video»…).
+export const MAIN_PLATFORMS = ['Netflix', 'Prime Video', 'Disney+', 'HBO Max', 'Apple TV+', 'Movistar Plus+', 'SkyShowtime', 'Filmin', 'Paramount+', 'Atresplayer', 'RTVE Play', 'Hulu', 'Peacock', 'YouTube'];
+export function canonPlatform(name = '') {
+  const n = String(name).trim();
+  if (/^apple\s*tv/i.test(n)) return 'Apple TV+';
+  if (/^(hbo\s*max|max)$/i.test(n) || /^hbo$/i.test(n)) return 'HBO Max';
+  if (/prime\s*video|^amazon/i.test(n)) return 'Prime Video';
+  if (/^movistar/i.test(n)) return 'Movistar Plus+';
+  if (/^disney/i.test(n)) return 'Disney+';
+  if (/^paramount/i.test(n)) return 'Paramount+';
+  if (/^skyshowtime/i.test(n)) return 'SkyShowtime';
+  if (/^filmin/i.test(n)) return 'Filmin';
+  if (/^atres\s*player/i.test(n)) return 'Atresplayer';
+  if (/^rtve|^tve$/i.test(n) && /play/i.test(n)) return 'RTVE Play';
+  if (/^youtube/i.test(n)) return 'YouTube';
+  return n || 'Otros';
+}
+
 export function scheduleFor(date, country = 'ES') {
   return memoize(`sched|${date}|${country}`, 30 * 60000, async () => {
     const [web, tv] = await Promise.all([
@@ -781,7 +799,8 @@ export function scheduleFor(date, country = 'ES') {
       const sh = ep._embedded?.show || ep.show; if (!sh) return null;
       const k = `${sh.id}|${ep.season}|${ep.number}`; if (seen.has(k)) return null; seen.add(k);
       return {
-        showId: String(sh.id), title: sh.name, cover: https(sh.image?.medium || ''), platform: sh.webChannel?.name || sh.network?.name || 'Otros',
+        showId: String(sh.id), title: sh.name, cover: https(sh.image?.medium || ''), platform: canonPlatform(sh.webChannel?.name || sh.network?.name || 'Otros'),
+        broadcast: !sh.webChannel && !!sh.network,
         code: ep.number ? epCode(ep.season, ep.number) : 'ESP', name: ep.name, airtime: ep.airtime || '', runtime: ep.runtime || null,
         premiere: ep.number === 1, newShow: ep.number === 1 && ep.season === 1, language: sh.language || '', genres: normGenres(sh.genres),
         weight: sh.weight || 0, imdbId: sh.externals?.imdb || '', year: yearOf(sh.premiered),
