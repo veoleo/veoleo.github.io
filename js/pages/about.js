@@ -79,20 +79,24 @@ const F = [
   { c: 'var(--mint)', href: '#/challenges', ico: 'trophy',
     es: ['Retos y estadísticas', 'Ponte objetivos y mira tu año en números.', [
       'Retos anuales de libros, series y películas con ritmo mes a mes',
-      'Mapa de actividad, horas de pantalla, páginas, géneros y plataformas']],
+      'Mapa de actividad, horas de pantalla, páginas, géneros y plataformas',
+      'Grafo de tu diario al estilo Obsidian, exportable como imagen para redes']],
     en: ['Challenges & stats', 'Set goals and see your year in numbers.', [
       'Yearly challenges for books, series and movies with monthly pace',
-      'Activity map, screen hours, pages, genres and platforms']] },
+      'Activity map, screen hours, pages, genres and platforms',
+      'Obsidian-style graph of your diary, exportable as an image for social media']] },
   { c: 'var(--purple)', href: '#/data', ico: 'obsidian',
     es: ['Notas y Obsidian', 'Escribe en Markdown y llévatelo todo.', [
       'Notas con callouts de Obsidian, públicas o privadas',
       'Exporta una nota .md o tu diario entero como bóveda de Obsidian (.zip)',
       'Una nota por título con portada, valoración y episodios, índice con Dataview y snippet CSS',
+      'Notas enlazadas por géneros, personas, plataformas y años: la vista de grafo de Obsidian sale conectada',
       'Plantilla configurable en Ajustes']],
     en: ['Notes & Obsidian', 'Write in Markdown and take everything with you.', [
       'Notes with Obsidian callouts, public or private',
       'Export one .md note or your whole diary as an Obsidian vault (.zip)',
       'One note per title with cover, rating and episodes, Dataview index and CSS snippet',
+      'Notes linked by genres, people, platforms and years: Obsidian graph view comes out connected',
       'Configurable template in Settings']] },
   { c: 'var(--accent)', href: '#/explore', ico: 'users',
     es: ['Comunidad', 'Comparte lo que estás viendo y por dónde vas.', [

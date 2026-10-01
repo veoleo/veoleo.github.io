@@ -80,7 +80,8 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
         <div class="row" style="--g:8px">
           ${anyFilter && html`<button class="btn text" onClick=${() => set({ status: '', year: '', minRating: 0, genre: '', platform: '', format: '', text: '' })}>Limpiar filtros</button>`}
           ${showExport && shown.length > 0 && html`<button class="btn sm obsidian" onClick=${() => setExp('zip')} title="Bóveda de Obsidian (.zip)"><${Icon} name="obsidian" size=${14} /> Obsidian · ${shown.length}</button>
-            <button class="btn sm ghost" onClick=${() => setExp(true)}><${Icon} name="download" size=${14} /> Exportar</button>`}
+            <button class="btn sm ghost" onClick=${() => setExp(true)}><${Icon} name="download" size=${14} /> Exportar</button>
+            <a class="btn sm ghost" href="#/graph"><${Icon} name="graph" size=${14} /> Grafo</a>`}
         </div>
       </div>
       ${shown.length ? html`<${LazyGrid} items=${shown} render=${(e) => html`<${PosterCard} key=${e.id} e=${e} />`} />`
