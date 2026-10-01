@@ -316,11 +316,15 @@ export async function publicListsOf(uid) {
 export async function importEntries(items) {
   const uid = uidOrThrow();
   const own = ownerFields();
+  const ids = [];
   for (let i = 0; i < items.length; i += 400) {
     const b = writeBatch(db);
     for (const it of items.slice(i, i + 400)) {
-      b.set(doc(collection(db, 'entries')), clean({ ...it, ownerId: uid, ...own, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+      const ref = doc(collection(db, 'entries'));
+      ids.push(ref.id);
+      b.set(ref, clean({ visibility: 'public', ...it, ownerId: uid, ...own, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
     }
     await b.commit();
   }
+  return ids;
 }

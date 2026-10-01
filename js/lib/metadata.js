@@ -29,7 +29,7 @@ export const SOURCES = {
   imdb: { name: 'IMDb', color: 'var(--yellow)' },
   google: { name: 'Google Books', color: 'var(--red)' },
   openlibrary: { name: 'Open Library', color: 'var(--purple)' },
-  itunes: { name: 'Apple Books', color: 'var(--pink)' },
+  itunes: { name: 'Apple', color: 'var(--pink)' },
   manual: { name: 'Manual', color: 'var(--mint)' },
 };
 
@@ -171,6 +171,8 @@ function imdbImg(i, w = 600) {
   return u ? u.replace(/\._V1_.*\.jpg$/, `._V1_SX${w}.jpg`) : '';
 }
 async function imdbSearch(type, q) {
+  // El servidor de IMDb genera un callback JS inválido si la consulta tiene espacios.
+  if (/\s/.test(q.trim())) return [];
   const d = await imdbSuggest(q);
   const ok = type === 'series' ? ['tvSeries', 'tvMiniSeries'] : ['movie', 'tvMovie', 'video', 'short'];
   return d.filter((r) => /^tt/.test(r.id) && ok.includes(r.qid)).map((r) => ({
@@ -180,6 +182,32 @@ async function imdbSearch(type, q) {
 }
 
 /* ───────────── Wikidata + Wikipedia ───────────── */
+
+// Búsqueda de películas/series en Wikidata (CORS abierto) con póster de IMDb por su id.
+export async function wikidataSearch(type, q) {
+  const re = type === 'series' ? /serie|series|televisi|miniserie|sitcom|anime/i : /película|film|movie|largometraje|documental|cortometraje/i;
+  const res = await Promise.all(['es', 'en'].map((l) => getJSON(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(q)}&language=${l}&uselang=es&type=item&limit=15&format=json&origin=*`).catch(() => ({ search: [] }))));
+  const hits = res.flatMap((r) => r.search || []).filter((x) => re.test(x.description || ''));
+  const ids = [...new Set(hits.map((x) => x.id))].slice(0, 14);
+  if (!ids.length) return [];
+  const sparql = `SELECT ?item ?itemLabel ?imdb ?date ?dirLabel WHERE { VALUES ?item { ${ids.map((i) => 'wd:' + i).join(' ')} } ?item wdt:P345 ?imdb . OPTIONAL { ?item wdt:P577 ?date } OPTIONAL { ?item wdt:P57 ?dir } SERVICE wikibase:label { bd:serviceParam wikibase:language "es,en". } }`;
+  const d = await getJSON('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql)).catch(() => null);
+  const by = new Map();
+  for (const r of d?.results?.bindings || []) {
+    const id = r.item.value.split('/').pop();
+    const cur = by.get(id) || { id, title: r.itemLabel?.value, imdb: r.imdb?.value, years: [], dirs: [] };
+    if (r.date?.value) cur.years.push(Number(r.date.value.slice(0, 4)));
+    if (r.dirLabel?.value && !cur.dirs.includes(r.dirLabel.value)) cur.dirs.push(r.dirLabel.value);
+    by.set(id, cur);
+  }
+  const rows = ids.map((i) => by.get(i)).filter((x) => x && /^tt\d+$/.test(x.imdb || ''));
+  const posters = await Promise.all(rows.map((x) => imdbSuggest(x.imdb).then((r) => r[0]).catch(() => null)));
+  return rows.map((x, i) => ({
+    source: 'imdb', sourceId: x.imdb, type, imdbId: x.imdb, wikidata: x.id,
+    title: x.title, year: x.years.length ? Math.min(...x.years) : posters[i]?.y || null,
+    cover: imdbImg(posters[i]?.i), creators: x.dirs.slice(0, 3), stars: posters[i]?.s || '',
+  }));
+}
 
 function cleanWdGenre(g) {
   return g.replace(/^(película|cine|serie de televisión|serie|telenovela|programa de televisión)( de| del)?\s*/i, '')
@@ -340,7 +368,7 @@ export async function searchMedia(type, q, settings = {}) {
   const safe = (p) => p.catch((e) => { console.warn('[TVDaily] fuente falló:', e.message); return []; });
   let lists = [];
   if (type === 'series') lists = await Promise.all([key ? safe(tmdbSearch('series', q, key)) : [], safe(tvmazeSearch(q)), safe(imdbSearch('series', q))]);
-  else if (type === 'movie') lists = await Promise.all([key ? safe(tmdbSearch('movie', q, key)) : [], safe(imdbSearch('movie', q))]);
+  else if (type === 'movie') lists = await Promise.all([key ? safe(tmdbSearch('movie', q, key)) : [], safe(imdbSearch('movie', q)), safe(wikidataSearch('movie', q))]);
   else if (type === 'book') lists = await Promise.all([safe(googleBooks(q, 'book')), safe(openLibrary(q, 'book'))]);
   else if (type === 'audiobook') lists = await Promise.all([safe(itunesAudiobooks(q, settings.region || 'ES')), safe(googleBooks(q, 'audiobook'))]);
   return dedupe(type === 'series' && !key ? [...lists[1], ...lists[2]] : interleave(...lists)).slice(0, 30);
@@ -358,6 +386,7 @@ export async function enrich(r, settings = {}, onProgress = () => {}) {
     else if (r.source === 'tvmaze') over(await tvmazeDetails(r.sourceId));
     else if (r.source === 'google') over(await googleDetails(r.sourceId, r.type));
     else if (r.source === 'openlibrary') merge(await openLibraryDetails(r.sourceId));
+    else if (r.source === 'itunes' && r.type === 'movie') over(await itunesMovieDetails(r.sourceId, (settings.region || 'es').toLowerCase()));
   } catch (e) { console.warn('[TVDaily] detalles', e.message); }
   onProgress({ ...d });
 
@@ -369,6 +398,12 @@ export async function enrich(r, settings = {}, onProgress = () => {}) {
         const hit = (r.type === 'series' ? f.tv_results : f.movie_results)?.[0];
         if (hit) { merge(await tmdbDetails(r.type, hit.id, key)); d.tmdbId = String(hit.id); }
       } catch { /* sin cruce */ }
+    }
+    if (!d.imdbId) {
+      let hits = await imdbSearch(r.type, d.originalTitle || d.title).catch(() => []);
+      if (!hits.length) hits = await wikidataSearch(r.type, d.originalTitle || d.title).catch(() => []);
+      const h = hits.find((x) => !d.year || !x.year || Math.abs(x.year - d.year) <= 1);
+      if (h) { d.imdbId = h.imdbId; if (!d.cover) d.cover = h.cover; }
     }
     const wd = await wikidataByImdb(d.imdbId).catch(() => null);
     if (wd) {
@@ -417,7 +452,7 @@ export function toEntryFields(d) {
     releaseDate: d.releaseDate || '', lastAirDate: d.lastAirDate || '', showStatus: d.showStatus || '',
     nextEpisode: d.nextEpisode || null, providers: d.providers || null,
     source: { name: d.source || 'manual', id: d.sourceId || '' },
-    ids: { tmdb: d.tmdbId || (d.source === 'tmdb' ? d.sourceId : '') || '', tvmaze: d.tvmazeId || (d.source === 'tvmaze' ? d.sourceId : '') || '', imdb: d.imdbId || '' },
+    ids: { tmdb: d.tmdbId || (d.source === 'tmdb' ? d.sourceId : '') || '', tvmaze: d.tvmazeId || (d.source === 'tvmaze' ? d.sourceId : '') || '', imdb: d.imdbId || '', itunes: d.itunesId || (d.source === 'itunes' ? d.sourceId : '') || '' },
   };
 }
 
@@ -456,83 +491,135 @@ function tmdbCard(r, type) {
   };
 }
 
-// Secciones de la página de Novedades. Con TMDB: tendencias, estrenos y por plataforma. Sin clave: TVMaze.
-export async function discoverSections(settings = {}, { provider = '' } = {}) {
-  const key = tmdbKey(settings);
-  const region = settings.region || 'ES';
+/* ───────────── Apple (rankings con CORS, sin clave) ───────────── */
+
+const appleImg = (u, w = 600, h = 900) => (u ? u.replace(/\/\d+x\d+bb\.(png|jpg)$/, `/${w}x${h}bb.jpg`) : '');
+const APPLE_FEEDS = { movie: 'topmovies', audiobook: 'topaudiobooks', book: 'toppaidebooks' };
+
+export async function appleTop(type, country = 'es', limit = 40) {
+  const d = await getJSON(`https://itunes.apple.com/${country.toLowerCase()}/rss/${APPLE_FEEDS[type]}/limit=${limit}/json`);
+  return (d.feed?.entry || []).map((e) => {
+    const imgs = e['im:image'] || [];
+    const big = imgs[imgs.length - 1]?.label || '';
+    const links = Array.isArray(e.link) ? e.link : [e.link];
+    const preview = links.find((l) => l?.attributes?.rel === 'enclosure')?.attributes?.href || '';
+    const id = e.id?.attributes?.['im:id'] || '';
+    const rel = e['im:releaseDate']?.label || '';
+    return {
+      source: 'itunes', sourceId: id, itunesId: id, type,
+      title: e['im:name']?.label || '', year: yearOf(rel), releaseDate: rel.slice(0, 10),
+      cover: type === 'movie' ? appleImg(big, 600, 900) : appleImg(big, 600, 600),
+      overview: stripHtml(e.summary?.label || ''), creators: e['im:artist']?.label ? [e['im:artist'].label] : [],
+      genres: normGenres([e.category?.attributes?.label || e.category?.attributes?.term].filter(Boolean)),
+      trailer: type === 'movie' && preview ? { video: preview } : null,
+      audioPreview: type === 'audiobook' ? preview : '',
+      externalUrl: links.find((l) => l?.attributes?.rel === 'alternate')?.attributes?.href || '',
+      network: type === 'movie' ? 'Apple TV' : '',
+    };
+  }).filter((x) => x.title);
+}
+
+async function itunesMovieDetails(id, country = 'es') {
+  const d = await getJSON(`https://itunes.apple.com/lookup?id=${id}&country=${country}`);
+  const r = d.results?.[0];
+  if (!r) return {};
+  return {
+    title: r.trackName, year: yearOf(r.releaseDate), releaseDate: (r.releaseDate || '').slice(0, 10),
+    cover: appleImg(r.artworkUrl100, 600, 900), overview: stripHtml(r.longDescription || r.shortDescription || ''),
+    creators: r.artistName ? [r.artistName] : [], genres: normGenres([r.primaryGenreName]),
+    runtime: r.trackTimeMillis ? Math.round(r.trackTimeMillis / 60000) : null,
+    trailer: r.previewUrl ? { video: r.previewUrl } : null, externalUrl: r.trackViewUrl, network: 'Apple TV',
+  };
+}
+
+/* ───────────── Novedades y recomendaciones (sin claves) ───────────── */
+
+function tvmazeCard(s, extra = {}) {
+  return {
+    source: 'tvmaze', sourceId: String(s.id), tvmazeId: String(s.id), type: 'series',
+    title: s.name, year: yearOf(s.premiered), releaseDate: s.premiered || '', cover: https(s.image?.medium || s.image?.original || ''),
+    overview: stripHtml(s.summary), network: s.webChannel?.name || s.network?.name || '', imdbId: s.externals?.imdb || '',
+    genres: normGenres(s.genres), weight: s.weight || 0, language: s.language || '', ...extra,
+  };
+}
+
+async function tvmazePremieres(daysBack = 12, daysFwd = 14) {
   const today = new Date().toISOString().slice(0, 10);
-  if (key) {
-    const prov = provider ? { with_watch_providers: provider, watch_region: region, with_watch_monetization_types: 'flatrate' } : {};
-    const ago = new Date(Date.now() - 45 * 864e5).toISOString().slice(0, 10);
-    const [trTv, trMv, newTv, nowMv, upMv] = await Promise.all([
-      provider ? tmdb('/discover/tv', { sort_by: 'popularity.desc', ...prov }, key) : tmdb('/trending/tv/week', {}, key),
-      provider ? tmdb('/discover/movie', { sort_by: 'popularity.desc', ...prov }, key) : tmdb('/trending/movie/week', {}, key),
-      tmdb('/discover/tv', { sort_by: 'popularity.desc', 'first_air_date.gte': ago, 'first_air_date.lte': today, ...prov }, key),
-      provider ? tmdb('/discover/movie', { sort_by: 'primary_release_date.desc', 'primary_release_date.lte': today, 'vote_count.gte': 20, ...prov }, key) : tmdb('/movie/now_playing', { region }, key),
-      tmdb('/movie/upcoming', { region }, key),
-    ].map((p) => p.catch(() => ({ results: [] }))));
-    return [
-      { id: 'new-tv', title: 'Series recién estrenadas', items: (newTv.results || []).map((r) => tmdbCard(r, 'series')) },
-      { id: 'trend-tv', title: provider ? 'Series populares en la plataforma' : 'Series en tendencia', items: (trTv.results || []).map((r) => tmdbCard(r, 'series')) },
-      { id: 'now-mv', title: provider ? 'Películas recientes en la plataforma' : 'Películas en cines', items: (nowMv.results || []).map((r) => tmdbCard(r, 'movie')) },
-      { id: 'trend-mv', title: provider ? 'Películas populares en la plataforma' : 'Películas en tendencia', items: (trMv.results || []).map((r) => tmdbCard(r, 'movie')) },
-      ...(provider ? [] : [{ id: 'up-mv', title: 'Próximos estrenos de cine', items: (upMv.results || []).filter((r) => (r.release_date || '') >= today).map((r) => tmdbCard(r, 'movie')) }]),
-    ].filter((s) => s.items.length);
-  }
-  // Sin clave: estrenos de temporada de la parrilla de streaming (TVMaze), ±10 días.
   const days = [];
-  for (let i = -10; i <= 10; i++) days.push(new Date(Date.now() + i * 864e5).toISOString().slice(0, 10));
+  for (let i = -daysBack; i <= daysFwd; i++) days.push(new Date(Date.now() + i * 864e5).toISOString().slice(0, 10));
   const lists = await Promise.all(days.map((d) => getJSON(`https://api.tvmaze.com/schedule/web?date=${d}`).catch(() => [])));
-  const seen = new Set(); const premieres = []; const upcoming = [];
+  const seen = new Set(); const out = [];
   for (const ep of lists.flat()) {
     const s = ep._embedded?.show; if (!s || ep.number !== 1 || seen.has(s.id)) continue;
     seen.add(s.id);
-    const card = {
-      source: 'tvmaze', sourceId: String(s.id), tvmazeId: String(s.id), type: 'series',
-      title: s.name, year: yearOf(s.premiered), releaseDate: ep.airdate, cover: https(s.image?.original || s.image?.medium || ''),
-      overview: stripHtml(s.summary), network: s.webChannel?.name || s.network?.name || '', imdbId: s.externals?.imdb || '',
-      premiereLabel: ep.season === 1 ? 'Serie nueva' : `Temporada ${ep.season}`, weight: s.weight || 0,
-      language: s.language || '',
-    };
-    if (provider && card.network !== provider) continue;
-    (ep.airdate > today ? upcoming : premieres).push(card);
+    out.push(tvmazeCard(s, { releaseDate: ep.airdate, premiereLabel: ep.season === 1 ? 'Nueva serie' : `Temporada ${ep.season}`, upcoming: ep.airdate > today }));
   }
+  return out;
+}
+
+// Las plataformas de streaming que más estrenan, para filtrar.
+export const STREAMERS = ['Netflix', 'HBO Max', 'Disney+', 'Prime Video', 'Apple TV', 'Paramount+', 'Hulu', 'Peacock', 'Movistar Plus+', 'Filmin', 'SkyShowtime'];
+const sameStreamer = (a = '', b = '') => {
+  const n = (x) => x.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^max$/, 'hbomax').replace('appletv+', 'appletv');
+  return n(a) === n(b) || n(a).startsWith(n(b)) || n(b).startsWith(n(a));
+};
+
+export async function discoverSections(settings = {}, { provider = '' } = {}) {
+  const key = tmdbKey(settings);
+  const country = (settings.region || 'ES').toLowerCase();
+  const safe = (p) => p.catch((e) => { console.warn('[TVDaily] novedades', e.message); return []; });
+  const [prem, movies, audio, books] = await Promise.all([
+    safe(tvmazePremieres()), safe(appleTop('movie', country)), safe(appleTop('audiobook', country, 30)), safe(appleTop('book', country, 30)),
+  ]);
+  const byProv = (x) => !provider || sameStreamer(x.network, provider);
   const byWeight = (a, b) => b.weight - a.weight;
-  return [
-    { id: 'premieres', title: 'Estrenos de temporada en streaming', items: premieres.sort(byWeight).slice(0, 40) },
-    { id: 'upcoming', title: 'Llegan en los próximos días', items: upcoming.sort((a, b) => a.releaseDate.localeCompare(b.releaseDate)).slice(0, 40) },
-  ].filter((s) => s.items.length);
+  const sections = [
+    { id: 'premieres', kicker: 'Streaming', title: 'Estrenos de series', items: prem.filter((x) => !x.upcoming && byProv(x)).sort(byWeight).slice(0, 40) },
+    { id: 'upcoming', kicker: 'Próximos días', title: 'Llegan pronto', items: prem.filter((x) => x.upcoming && byProv(x)).sort((a, b) => a.releaseDate.localeCompare(b.releaseDate)).slice(0, 40) },
+  ];
+  if (!provider || sameStreamer('Apple TV', provider)) sections.push({ id: 'movies', kicker: 'Lo más visto', title: 'Películas del momento', items: movies });
+  if (!provider) {
+    sections.push({ id: 'audiobooks', kicker: 'Top audiolibros', title: 'Para escuchar', items: audio });
+    sections.push({ id: 'books', kicker: 'Top libros', title: 'Para leer', items: books });
+  }
+  if (key) {
+    try {
+      const tr = await tmdb('/trending/tv/week', {}, key);
+      sections.splice(1, 0, { id: 'trend-tv', kicker: 'Tendencia', title: 'Series en tendencia', items: (tr.results || []).map((r) => tmdbCard(r, 'series')) });
+    } catch { /* opcional */ }
+  }
+  return sections.filter((s) => s.items.length);
 }
 
-// Plataformas disponibles para filtrar novedades.
-export async function providerOptions(settings = {}) {
-  const key = tmdbKey(settings);
-  if (!key) return ['Netflix', 'HBO Max', 'Max', 'Disney+', 'Prime Video', 'Apple TV+', 'Hulu', 'Paramount+', 'Peacock'].map((n) => ({ id: n, name: n }));
-  const region = settings.region || 'ES';
-  const d = await tmdb('/watch/providers/tv', { watch_region: region }, key).catch(() => ({ results: [] }));
-  return (d.results || []).sort((a, b) => (a.display_priorities?.[region] ?? 99) - (b.display_priorities?.[region] ?? 99))
-    .slice(0, 14).map((p) => ({ id: String(p.provider_id), name: p.provider_name, logo: p.logo_path ? TMDB_IMG + 'w92' + p.logo_path : '' }));
+export async function providerOptions() {
+  return STREAMERS.map((n) => ({ id: n, name: n }));
 }
 
-// Recomendaciones personales a partir de tus entradas mejor valoradas (TMDB).
+// Recomendaciones: candidatos de novedades puntuados según tus géneros y plataformas favoritos.
 export async function recommendationsFor(entries, settings = {}) {
-  const key = tmdbKey(settings);
-  if (!key) return [];
-  const have = new Set(entries.map((e) => e.ids?.tmdb).filter(Boolean));
-  const seeds = entries.filter((e) => (e.type === 'series' || e.type === 'movie') && e.ids?.tmdb && (e.rating || 0) >= 4)
-    .sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 6);
-  const out = new Map();
-  await Promise.all(seeds.map(async (seed) => {
-    const kind = seed.type === 'series' ? 'tv' : 'movie';
-    const d = await tmdb(`/${kind}/${seed.ids.tmdb}/recommendations`, {}, key).catch(() => ({ results: [] }));
-    for (const r of (d.results || []).slice(0, 8)) {
-      if (have.has(String(r.id))) continue;
-      const k = kind + r.id;
-      if (!out.has(k)) out.set(k, { ...tmdbCard(r, seed.type), because: seed.title, hits: 0 });
-      out.get(k).hits++;
-    }
-  }));
-  return [...out.values()].sort((a, b) => b.hits - a.hits || (b.score || 0) - (a.score || 0)).slice(0, 24);
+  const liked = entries.filter((e) => (e.rating || 0) >= 4 || e.status === 'completed');
+  if (!liked.length) return [];
+  const gw = {}, pw = {};
+  for (const e of liked) {
+    const w = (e.rating || 3) - 2.5;
+    for (const g of e.genres || []) gw[g] = (gw[g] || 0) + w;
+    const p = e.network || e.platform; if (p) pw[p] = (pw[p] || 0) + 1;
+  }
+  const secs = await discoverSections(settings).catch(() => []);
+  const have = new Set(entries.map((e) => `${e.type}|${String(e.title).toLowerCase()}`));
+  const seen = new Set();
+  const scored = [];
+  for (const it of secs.flatMap((s) => s.items)) {
+    const k = `${it.type}|${String(it.title).toLowerCase()}`;
+    if (have.has(k) || seen.has(k)) continue; seen.add(k);
+    const gs = (it.genres || []).map((g) => [g, gw[g] || 0]).sort((a, b) => b[1] - a[1]);
+    let score = gs.reduce((a, [, w]) => a + w, 0) + (pw[it.network] || 0) * 0.6 + (it.weight || 0) / 50;
+    if (score <= 0.5) continue;
+    const top = gs[0]?.[1] > 0 ? gs[0][0] : '';
+    const fav = liked.filter((e) => top && (e.genres || []).includes(top)).sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+    scored.push({ ...it, score, because: fav ? fav.title : top });
+  }
+  return scored.sort((a, b) => b.score - a.score).slice(0, 24);
 }
 
 // Próximo episodio de una serie (para el calendario).

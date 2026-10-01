@@ -1,10 +1,10 @@
 // Utilidades compartidas: tipos, estados, fechas, filtros y helpers varios.
 
 export const TYPES = {
-  series: { key: 'series', label: 'Serie', plural: 'Series', icon: '📺', color: 'var(--c-series)' },
-  movie: { key: 'movie', label: 'Película', plural: 'Películas', icon: '🎬', color: 'var(--c-movie)' },
-  book: { key: 'book', label: 'Libro', plural: 'Libros', icon: '📖', color: 'var(--c-book)' },
-  audiobook: { key: 'audiobook', label: 'Audiolibro', plural: 'Audiolibros', icon: '🎧', color: 'var(--c-audio)' },
+  series: { key: 'series', label: 'Serie', plural: 'Series', icon: '📺', ico: 'tv', color: 'var(--c-series)' },
+  movie: { key: 'movie', label: 'Película', plural: 'Películas', icon: '🎬', ico: 'film', color: 'var(--c-movie)' },
+  book: { key: 'book', label: 'Libro', plural: 'Libros', icon: '📖', ico: 'book', color: 'var(--c-book)' },
+  audiobook: { key: 'audiobook', label: 'Audiolibro', plural: 'Audiolibros', icon: '🎧', ico: 'headphones', color: 'var(--c-audio)' },
 };
 export const TYPE_KEYS = Object.keys(TYPES);
 
@@ -176,7 +176,7 @@ export function hashHue(s) {
 }
 
 // Color de la paleta cómic asignado de forma estable a un texto.
-const PALETTE = ['var(--red)', 'var(--yellow)', 'var(--teal)', 'var(--blue)', 'var(--pink)', 'var(--orange)', 'var(--purple)', 'var(--mint)'];
+const PALETTE = ['var(--accent)', 'var(--red)', 'var(--yellow)', 'var(--teal)', 'var(--blue)', 'var(--pink)', 'var(--orange)', 'var(--purple)'];
 export function paletteFor(s) { return PALETTE[hashHue(s) % PALETTE.length]; }
 
 export function download(filename, content, mime = 'text/markdown;charset=utf-8') {

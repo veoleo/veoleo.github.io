@@ -3,7 +3,7 @@
 
 let ctx = null, master = null, reverb = null, noiseBuf = null;
 let enabled = readPref('tvd.sound', 'on') === 'on';
-let volume = Number(readPref('tvd.volume', '0.7'));
+let volume = Number(readPref('tvd.volume', '0.45'));
 let lastHover = 0;
 
 function readPref(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } }
@@ -64,6 +64,29 @@ function play(fn) {
 }
 
 export const sfx = {
+  // Apertura: barrido ascendente + golpe grave muy suave (modales, fichas).
+  open() {
+    play((c, t) => {
+      const src = c.createBufferSource(); src.buffer = noiseBuf;
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
+      bp.frequency.setValueAtTime(400, t); bp.frequency.exponentialRampToValueAtTime(4200, t + 0.32);
+      const g = c.createGain(); env(g, t, 0.12, 0.16, 0.26);
+      src.connect(bp); bp.connect(g); out(g, 0.45); src.start(t); src.stop(t + 0.5);
+      const o = c.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(90, t + 0.05); o.frequency.exponentialRampToValueAtTime(42, t + 0.5);
+      const og = c.createGain(); env(og, t + 0.05, 0.01, 0.22, 0.5);
+      o.connect(og); out(og, 0.3); o.start(t + 0.05); o.stop(t + 0.7);
+    });
+  },
+  close() {
+    play((c, t) => {
+      const src = c.createBufferSource(); src.buffer = noiseBuf;
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
+      bp.frequency.setValueAtTime(3000, t); bp.frequency.exponentialRampToValueAtTime(300, t + 0.25);
+      const g = c.createGain(); env(g, t, 0.05, 0.1, 0.22);
+      src.connect(bp); bp.connect(g); out(g, 0.2); src.start(t); src.stop(t + 0.4);
+    });
+  },
   // Barrido de aire filtrado: transiciones de página y modales.
   whoosh(dir = 1) {
     play((c, t) => {
@@ -71,13 +94,13 @@ export const sfx = {
       const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
       const [f0, f1] = dir > 0 ? [260, 3200] : [3000, 220];
       bp.frequency.setValueAtTime(f0, t); bp.frequency.exponentialRampToValueAtTime(f1, t + 0.42);
-      const g = c.createGain(); env(g, t, 0.16, 0.42, 0.34);
+      const g = c.createGain(); env(g, t, 0.14, 0.26, 0.32);
       src.connect(bp); bp.connect(g); out(g, 0.35);
       src.start(t); src.stop(t + 0.7);
     });
   },
   // "BRAAAM" de tráiler: guardar, logros, intro.
-  braam(intensity = 1) {
+  braam(intensity = 0.55) {
     play((c, t) => {
       const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 6;
       lp.frequency.setValueAtTime(90, t);
