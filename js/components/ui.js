@@ -325,3 +325,19 @@ export function LangToggle() {
       onClick=${() => { if (LANG !== l) { sfx.click(); setLang(l); } }}>${FLAGS[l]}<span>${l.toUpperCase()}</span></button>`)}
   </div>`;
 }
+
+/* ── rejilla que pinta por tandas (cientos de pósters sin agotar la memoria del móvil) ── */
+export function LazyGrid({ items, render, step = 48, class: cls = 'grid', style = '' }) {
+  const [n, setN] = useState(step);
+  const sentinel = useRef();
+  useEffect(() => setN(step), [items.length]);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || n >= items.length) return;
+    const io = new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) setN((v) => Math.min(items.length, v + step)); }, { rootMargin: '900px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [n, items.length]);
+  return html`<div class=${cls} style=${style}>${items.slice(0, n).map(render)}</div>
+    ${n < items.length && html`<div ref=${sentinel} class="lazy-more"><button class="btn ghost sm" onClick=${() => setN(n + step)}>${items.length - n} más</button></div>`}`;
+}
