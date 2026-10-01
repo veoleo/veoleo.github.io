@@ -98,10 +98,13 @@ export function Cover({ src, title, type, alt = '', w = 360 }) {
   if (!src || stage > 1) return html`<${GenPoster} title=${title} type=${type} />`;
   return html`<img ref=${ref} src=${stage === 0 ? img(src, w) : src} alt=${alt || title} loading="lazy" decoding="async" referrerpolicy="no-referrer" onError=${() => setStage(stage + 1)} />`;
 }
+const SMALL_SCREEN = typeof matchMedia === 'function' && matchMedia('(max-width: 900px)').matches;
 export function BgImg({ src, w = 1400, style = '', alt = '' }) {
   const [stage, setStage] = useState(0);
+  // En el móvil, los fondos a 900 px: un original de 4K decodificado ocupa ~30 MB de memoria.
+  if (SMALL_SCREEN) w = Math.min(w, 900);
   useEffect(() => setStage(0), [src]);
-  if (!src || stage > 1) return null;
+  if (!src || stage > 1 || (stage === 1 && SMALL_SCREEN && w > 400)) return null;
   return html`<img src=${stage === 0 ? img(src, w) : src} alt=${alt} style=${style} decoding="async" referrerpolicy="no-referrer" onError=${() => setStage(stage + 1)} />`;
 }
 
