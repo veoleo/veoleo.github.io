@@ -54,7 +54,7 @@ export function EntryForm({ draft, onClose, onSaved }) {
       else if (!f.trailerUrl && trailer?.youtube) trailer = null;
       const data = {
         ...(isEdit ? {} : toEntryFields(draft)),
-        type: f.type, status: f.status, rating: Number(f.rating) || 0,
+        type: f.type, status: f.status, statusManual: true, rating: Number(f.rating) || 0,
         startedAt: f.startedAt || '', finishedAt: f.status === 'planned' ? '' : f.finishedAt || '',
         platform: f.platform || '', consumption: isBook ? f.consumption : null, rewatch: Number(f.rewatch) || 0,
         tags: uniq(f.tags.split(',').map((t) => t.trim())), visibility: f.visibility,
