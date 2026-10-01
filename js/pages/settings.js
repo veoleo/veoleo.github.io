@@ -10,6 +10,7 @@ import { download } from '../lib/utils.js';
 import { flash } from '../lib/fx.js';
 import { CoverPicker } from '../components/profile-kit.js';
 import { CONTACT_EMAIL } from '../config.js';
+import { guestLogout } from '../components/guest.js';
 import { LangToggle } from '../components/ui.js';
 
 const SAMPLE = {
@@ -153,7 +154,7 @@ export function SettingsPage() {
         </dl>
         <div class="panel" style="--c:#ffdd00;max-width:640px"><h3 class="h3">¿Te gusta Veoleo?</h3><p class="muted" style="margin:0 0 18px">Es gratis y sin anuncios. Si quieres apoyarlo, invítame a un café.</p><${SupportButton} />
           <p class="muted" style="margin:18px 0 0">Contacto: <a href=${`mailto:${CONTACT_EMAIL}?subject=Veoleo`} data-no-i18n style="color:var(--accent)">${CONTACT_EMAIL}</a></p></div>
-        <div class="row"><a class="btn ghost" href="#/data"><${Icon} name="database" /> Importar y exportar datos</a><button class="btn danger" onClick=${() => { sfx.close(); logout(); }}><${Icon} name="logout" /> Cerrar sesión</button></div>
+        <div class="row"><a class="btn ghost" href="#/data"><${Icon} name="database" /> Importar y exportar datos</a><button class="btn danger" onClick=${() => { if (user?.isAnonymous) guestLogout(); else { sfx.close(); logout(); } }}><${Icon} name="logout" /> Cerrar sesión</button></div>
       </div>`}
     </div>
   </div>`;

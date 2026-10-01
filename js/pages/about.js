@@ -117,7 +117,8 @@ const F = [
       'Instálala en el móvil desde el navegador (PWA)',
       'Español e inglés con la bandera de arriba',
       'Búsqueda global con ⌘K y sonidos sutiles opcionales',
-      'Gratis, sin anuncios y sin claves que configurar']],
+      'Gratis para siempre: sin anuncios, sin suscripciones, sin vender tus datos y sin claves que configurar',
+      'Pruébala sin cuenta con una biblioteca de ejemplo y guárdala cuando quieras']],
     en: ['The app', 'Fast, installable and free.', [
       'Install it on your phone from the browser (PWA)',
       'Spanish and English with the flag at the top',
@@ -134,9 +135,11 @@ export function AboutPage({ public: isPublic = false }) {
       <div class="page-head"><div>
         <div class="kicker">${L === 'en' ? 'Series · Movies · Books · Audiobooks' : 'Series · Cine · Libros · Audiolibros'}</div>
         <h1 class="display" style="margin-top:20px"><${Scramble} text=${L === 'en' ? 'What is Veoleo' : 'Qué es Veoleo'} /></h1>
+        <div class="free-badge" style="margin-top:22px">${L === 'en' ? 'Free forever · No ads · No credit card · No API keys' : 'Gratis para siempre · Sin anuncios · Sin tarjeta · Sin claves'}</div>
         <p class="lead" style="margin-top:22px">${L === 'en'
           ? 'Your diary of everything you watch, read and listen to: episodes, ratings, notes, lists, news and people. Everything works on its own, free and without ads.'
           : 'Tu diario de todo lo que ves, lees y escuchas: episodios, valoraciones, notas, listas, noticias y gente. Todo funciona solo, gratis y sin anuncios.'}</p>
+        ${isPublic && html`<div class="row" style="margin-top:26px"><a class="btn lg" href="#/">${L === 'en' ? 'Try it without an account' : 'Probar sin cuenta'}</a></div>`}
       </div></div>
       <div class="feat-grid">${F.map((f, i) => {
         const [t, d, items] = f[L];

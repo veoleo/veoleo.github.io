@@ -10,6 +10,7 @@ import { toMillis, debounce, TYPES } from '../lib/utils.js';
 import { sfx } from '../lib/sound.js';
 import { burstAt } from '../lib/fx.js';
 import { FeedItem } from './home.js';
+import { askSaveAccount } from '../components/guest.js';
 import { PostComposer, PostFeed, PostCard, EntryStrip } from '../components/posts.js';
 import { CoverPicker, Top4 } from '../components/profile-kit.js';
 import { latestPosts, postsFrom, postsOf, getPost, entrySnapshot } from '../lib/db.js';
@@ -19,6 +20,7 @@ export function FollowButton({ uid, onChange }) {
   const { following, user } = useStore();
   const on = following.includes(uid);
   if (!user || uid === user.uid) return null;
+  if (user.isAnonymous) return html`<button class="btn" onClick=${() => askSaveAccount()}><${Icon} name="plus" /> Seguir</button>`;
   return html`<button class="btn ${on ? 'ghost' : ''}" onClick=${async (ev) => {
     const el = ev.currentTarget;
     try {
