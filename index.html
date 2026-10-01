@@ -3,13 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>TVDaily — tu diario de series, cine y libros</title>
-  <meta name="description" content="Tracker cinematográfico de series, películas, libros y audiolibros. Notas exportables a Obsidian, listas, retos y comunidad." />
-  <meta name="theme-color" content="#f6eedf" />
+  <title>TVDaily — series, cine, libros y audiolibros</title>
+  <meta name="description" content="Tu diario de series, películas, libros y audiolibros: episodios, valoraciones, listas, retos, noticias y notas exportables a Obsidian." />
+  <meta name="theme-color" content="#05060a" />
+  <meta property="og:title" content="TVDaily" />
+  <meta property="og:description" content="Tu diario de series, películas, libros y audiolibros." />
+  <meta property="og:type" content="website" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/app.css" />
   <script type="importmap">
   {
@@ -25,11 +30,12 @@
   </script>
 </head>
 <body>
-  <div class="fx-dots" aria-hidden="true"></div>
-  <div class="fx-paper" aria-hidden="true"></div>
-  <div id="app">
-    <div class="boot"><span>TV</span>DAILY</div>
-  </div>
+  <div class="fx-aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="fx-grid" aria-hidden="true"></div>
+  <div class="fx-cursor" aria-hidden="true"></div>
+  <div class="fx-noise" aria-hidden="true"></div>
+  <div id="app"><div class="boot"><b>TVDAILY</b></div></div>
+  <noscript>TVDaily necesita JavaScript.</noscript>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
