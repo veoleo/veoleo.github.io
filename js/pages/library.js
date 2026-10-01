@@ -1,6 +1,6 @@
 // Biblioteca (propia o de otra persona) con filtros por tipo, estado, año, ranking, género y plataforma.
 import { html, useState, useMemo, useEffect } from 'preact-standalone';
-import { PosterCard, Tabs, Chip, SkeletonGrid, Modal, Icon, Scramble } from '../components/ui.js';
+import { PosterCard, Tabs, Chip, SkeletonGrid, Modal, Icon, Scramble, LazyGrid } from '../components/ui.js';
 import { useStore, toast } from '../lib/store.js';
 import { setQuery } from '../lib/router.js';
 import { TYPES, statusKeysFor, STATUS_COLORS, statusLabel, entryYear, matchRules, sortEntries, uniq } from '../lib/utils.js';
@@ -82,7 +82,7 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
             <button class="btn sm ghost" onClick=${() => setExp(true)}><${Icon} name="download" size=${14} /> Exportar</button>`}
         </div>
       </div>
-      ${shown.length ? html`<div class="grid">${shown.map((e) => html`<${PosterCard} key=${e.id} e=${e} />`)}</div>`
+      ${shown.length ? html`<${LazyGrid} items=${shown} render=${(e) => html`<${PosterCard} key=${e.id} e=${e} />`} />`
         : html`<p class="lead">Nada coincide con esos filtros.</p>`}
       ${exp && html`<${ExportModal} entries=${shown} name=${exportName} settings=${settings} lists=${lists} auto=${exp === true ? '' : exp} onClose=${() => setExp(false)} />`}
     </div>`;

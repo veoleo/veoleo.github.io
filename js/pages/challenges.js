@@ -1,6 +1,6 @@
 // Retos anuales: libros, audiolibros, series, películas y páginas.
 import { html, useState, useEffect } from 'preact-standalone';
-import { Ring, PosterCard, Switch, Tabs, SectionHead, Scramble } from '../components/ui.js';
+import { Ring, PosterCard, Switch, Tabs, SectionHead, Scramble, LazyGrid } from '../components/ui.js';
 import { useStore, toast } from '../lib/store.js';
 import { updateMyProfile } from '../lib/db.js';
 import { entryYear } from '../lib/utils.js';
@@ -89,8 +89,8 @@ export function ChallengesPage({ entries: extEntries, profile: extProfile, readO
 
     ${done.length > 0 && html`<section class="section">
       <${SectionHead} kicker=${`${done.length} títulos`} title=${`Terminado en ${year}`} color="var(--teal)" />
-      <div class="grid">${[...done].sort((a, b) => String(b.finishedAt).localeCompare(String(a.finishedAt))).map((e) => html`<${PosterCard} key=${e.id} e=${e}
-        sub=${e.finishedAt ? new Date(e.finishedAt + 'T12:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''} />`)}</div>
+      <${LazyGrid} items=${[...done].sort((a, b) => String(b.finishedAt).localeCompare(String(a.finishedAt)))} render=${(e) => html`<${PosterCard} key=${e.id} e=${e}
+        sub=${e.finishedAt ? new Date(e.finishedAt + 'T12:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''} />`} />
     </section>`}
   </div>`;
 }

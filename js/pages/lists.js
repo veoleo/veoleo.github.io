@@ -1,6 +1,6 @@
 // Listas: del sistema (Must watch, Abandonadas…), automáticas por año, inteligentes y manuales.
 import { html, useState, useEffect } from 'preact-standalone';
-import { PosterCard, Chip, Modal, Switch, Spinner, Avatar, Stars, Cover, Icon, SectionHead, Scramble, shareLink } from '../components/ui.js';
+import { PosterCard, Chip, Modal, Switch, Spinner, Avatar, Stars, Cover, Icon, SectionHead, Scramble, shareLink, LazyGrid } from '../components/ui.js';
 import { ExportModal } from './library.js';
 import { useStore, toast } from '../lib/store.js';
 import { createList, updateList, deleteList, getList, publicEntriesOf } from '../lib/db.js';
@@ -204,8 +204,8 @@ export function ListPage({ id }) {
         <option value="rating">Mejor valoradas</option><option value="finished">Fecha de fin</option><option value="recent">Recientes</option><option value="title">Título</option><option value="year">Año</option>
       </select>
     </div>
-    ${items.length ? html`<div class="grid">${items.map((e) => html`<${PosterCard} key=${e.id} e=${e}
-        extra=${own && isManual ? html`<button class="btn text" onClick=${async (ev) => { ev.preventDefault(); ev.stopPropagation(); await updateList(id, { itemIds: (list.itemIds || []).filter((x) => x !== e.id) }); sfx.click(); }}>Quitar</button>` : null} />`)}</div>`
+    ${items.length ? html`<${LazyGrid} items=${items} render=${(e) => html`<${PosterCard} key=${e.id} e=${e}
+        extra=${own && isManual ? html`<button class="btn text" onClick=${async (ev) => { ev.preventDefault(); ev.stopPropagation(); await updateList(id, { itemIds: (list.itemIds || []).filter((x) => x !== e.id) }); sfx.click(); }}>Quitar</button>` : null} />`} />`
       : html`<p class="lead">${isManual && own ? 'Añade títulos desde «Editar» en cada ficha.' : 'Cuando algo cumpla las reglas aparecerá aquí.'}</p>`}
     ${edit && html`<${ListEditor} initial=${list} onClose=${() => setEdit(false)} />`}
     ${exp && html`<${ExportModal} entries=${items} name=${safeFilename(list.name)} settings=${st.settings} lists=${[]} onClose=${() => setExp(false)} />`}
