@@ -3,7 +3,7 @@ import { LANG, startDomTranslation } from './lib/i18n.js';
 import { html, render, useState, useEffect, useLayoutEffect, useRef, Component } from 'preact-standalone';
 import { useStore, setState, toast } from './lib/store.js';
 import { onAuth, ensureProfile, loadSettings, watchMine, logout, loadSavedNews } from './lib/db.js';
-import { reconcileSeries, resetReconcile } from './lib/sync.js';
+import { reconcileSeries, resetReconcile, repairImportedDates } from './lib/sync.js';
 import { useRoute, go, scrollTop } from './lib/router.js';
 import { sfx, unlockAudio, isSoundOn, setSound } from './lib/sound.js';
 import { observeReveal, trackCursor } from './lib/fx.js';
@@ -269,6 +269,7 @@ onAuth(async (user) => {
     const { getState } = await import('./lib/store.js');
     for (let i = 0; i < 10 && !getState().entriesReady; i++) await new Promise((r) => setTimeout(r, 2000));
     if (!getState().entriesReady || getState().user?.uid !== user.uid) return;
+    await repairImportedDates(getState().entries).catch(() => 0);
     const moved = await reconcileSeries(getState().entries).catch(() => null);
     const n = moved ? moved.completed.length + moved.up_to_date.length : 0;
     if (n) toast(`${n} ${n === 1 ? 'serie actualizada' : 'series actualizadas'}: ${[...moved.completed.map((t) => t + ' → Vista'), ...moved.up_to_date.map((t) => t + ' → Al día')].slice(0, 3).join(' · ')}`, 'ok', 6000);
