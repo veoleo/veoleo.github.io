@@ -912,7 +912,8 @@ a.stat:hover::before { width: 100%; }
 .header .icon-sm { width: 38px; padding: 0; justify-content: center; }
 @media (max-width: 1500px) { .header .hide-sm.btn { padding: 9px 11px; } }
 
-@media (max-width: 1700px) { .header .snd { display: none; } .header .lang button span { display: none; } .header .lang button { padding: 0 8px; } .header .add-lbl { display: none; } }
+@media (min-width: 1201px) and (max-width: 1700px) { .header .snd { display: none; } }
+@media (max-width: 1700px) { .header .lang button span { display: none; } .header .lang button { padding: 0 8px; } .header .add-lbl { display: none; } }
 @media (max-width: 1200px) { .header .add-lbl { display: inline; } }
 @media (max-width: 640px) { .header .add-lbl { display: none; } }
 @media (min-width: 1201px) and (max-width: 1700px) { .header .logo .lt { display: none; } .header .wrap { gap: 12px; } .nav a { padding: 0 8px; } .header-actions { gap: 6px; } }
@@ -945,3 +946,15 @@ a.stat:hover::before { width: 100%; }
 img, video, iframe, canvas, svg { max-width: 100%; }
 .modal, .modal-body, .stack, .cols-2 > *, .grid > *, .pstrip, .post .pbody { min-width: 0; }
 .modal .prose, .modal p, .modal h1, .modal h2, .modal h3 { overflow-wrap: anywhere; }
+
+/* año de visionado */
+.year-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.year-pick .select { width: auto; min-width: 130px; padding: 8px 12px; font-size: .8rem; }
+.year-pick .select.on { border-color: var(--accent); color: var(--accent); }
+.year-pick.compact .chip { padding: 7px 11px; }
+
+button.more-link { width: 100%; background: none; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; text-align: left; }
+.more-sw { margin-left: auto; width: 46px; height: 26px; border-radius: 0; background: var(--surface-3); position: relative; flex: none; }
+.more-sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: var(--text-2); transition: transform .25s var(--ease), background .25s; }
+.more-sw.on { background: rgba(198, 255, 61, .25); }
+.more-sw.on::after { transform: translateX(20px); background: var(--accent); }
