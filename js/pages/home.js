@@ -21,7 +21,8 @@ export function HomePage() {
   const [preview, setPreview] = useState(null);
   const y = new Date().getFullYear();
   const done = entries.filter((e) => e.status === 'completed' && entryYear(e) === y);
-  const inProgress = sortEntries(entries.filter((e) => e.status === 'in_progress'));
+  const inProgressAll = entries.filter((e) => e.status === 'in_progress');
+  const inProgress = sortEntries(inProgressAll).slice(0, 20);
   const recent = sortEntries(entries).slice(0, 16);
   const planned = sortEntries(entries.filter((e) => e.status === 'planned')).slice(0, 16);
   const featured = inProgress.find((e) => e.backdrop) || inProgress[0] || recent.find((e) => e.backdrop) || recent[0];
@@ -76,7 +77,7 @@ export function HomePage() {
       </div>
     </section>`}
 
-    ${inProgress.length > 0 && html`<section class="section reveal"><${SectionHead} kicker="En curso" title="Seguir viendo y leyendo" color="var(--yellow)" />
+    ${inProgress.length > 0 && html`<section class="section reveal"><${SectionHead} kicker="En curso" title="Seguir viendo y leyendo" color="var(--yellow)">${inProgressAll.length > inProgress.length && html`<a class="btn ghost sm" href="#/library?status=in_progress">Ver las ${inProgressAll.length}</a>`}</${SectionHead}>
       <${Carousel} items=${inProgress} label=${(e) => (e.type === 'series' ? `${(e.watchedEpisodes || []).length}/${e.episodes || '?'} episodios` : statusLabel(e.status, e.type))} /></section>`}
 
     ${recs.data?.length > 0 && html`<section class="section reveal"><${SectionHead} kicker="Para ti" title="Te puede gustar" color="var(--pink)"><a class="btn ghost sm" href="#/discover">Novedades</a></${SectionHead}>
