@@ -79,7 +79,7 @@ export function ItemPage({ id }) {
   // Cambio rápido de estado (Viendo → Abandonada, Vista…) sin abrir el formulario.
   async function setStatus(k, el) {
     if (k === e.status) return;
-    const patch = { status: k };
+    const patch = { status: k, statusManual: true };
     if (k === 'completed' && !e.finishedAt && !e.watchedYear && !e.yearUnknown) { patch.finishedAt = todayISO(); patch.lastWatchedAt = e.lastWatchedAt || todayISO(); }
     if (k === 'in_progress' && !e.startedAt) patch.startedAt = todayISO();
     try {
