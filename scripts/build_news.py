@@ -67,7 +67,7 @@ NS = {
     "atom": "http://www.w3.org/2005/Atom",
     "dc": "http://purl.org/dc/elements/1.1/",
 }
-UA = "Mozilla/5.0 (compatible; TVDaily-news/1.0; +https://github.com/wilderwests/TVDaily)"
+UA = "Mozilla/5.0 (compatible; Veoleo-news/1.0; +https://github.com/veoleo/veoleo.github.io)"
 PER_SOURCE = 20
 MAX_ITEMS = 500
 
