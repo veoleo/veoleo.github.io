@@ -1,9 +1,9 @@
 // Ajustes: perfil, preferencias, plantilla Markdown para Obsidian y cuenta.
-import { DEFAULT_REGION } from '../lib/i18n.js';
+import { DEFAULT_REGION, t } from '../lib/i18n.js';
 import { html, useState, useMemo } from 'preact-standalone';
 import { Avatar, Switch, Tabs, Icon, SectionHead, Scramble, SupportButton } from '../components/ui.js';
 import { useStore, toast } from '../lib/store.js';
-import { updateMyProfile, changeHandle, saveSettings, logout } from '../lib/db.js';
+import { updateMyProfile, changeHandle, saveSettings, logout, setAllVisibility } from '../lib/db.js';
 import { DEFAULT_TEMPLATE, PLACEHOLDERS, renderTemplate, entryContext, renderMarkdown, OBSIDIAN_CSS, filenameFor } from '../lib/markdown.js';
 import { isSoundOn, setSound, getVolume, setVolume, sfx } from '../lib/sound.js';
 import { download } from '../lib/utils.js';
@@ -22,7 +22,9 @@ const SAMPLE = {
 };
 
 export function SettingsPage() {
-  const { profile, settings, user } = useStore();
+  const { profile, settings, user, entries } = useStore();
+  const [privDef, setPrivDef] = useState(!!settings.privateByDefault);
+  const [bulk, setBulk] = useState('');
   const [tab, setTab] = useState('profile');
   const [p, setP] = useState({ displayName: profile?.displayName || '', handle: profile?.handle || '', bio: profile?.bio || '', photoURL: profile?.photoURL || '', website: profile?.website || '', location: profile?.location || '' });
   const [cover, setCover] = useState(false);
@@ -135,6 +137,15 @@ export function SettingsPage() {
       </div>`}
 
       ${tab === 'account' && html`<div class="stack" style="--g:28px">
+        <div class="stack" style="--g:16px;max-width:720px">
+          <${SectionHead} kicker="Privacidad" title="Quién ve tu diario" color="var(--teal)" />
+          <p class="muted" style="margin:0">Tu email nunca se muestra a nadie. Lo público solo lo ven personas con cuenta en Veoleo; lo privado solo tú. Las notas tienen su propia privacidad y una nota nunca es visible si su entrada es privada.</p>
+          <${Switch} checked=${privDef} onChange=${(v) => { setPrivDef(v); saveSet({ privateByDefault: v }, v ? 'Lo nuevo será privado' : 'Lo nuevo será público'); }} label="Lo que añada o importe será privado por defecto" />
+          <div class="row" style="--g:10px">
+            <button class="btn ghost" disabled=${!!bulk} onClick=${async () => { if (!confirm(t('¿Hacer privado todo tu diario? Nadie más podrá ver tus entradas ni tus notas.'))) return; setBulk('private'); try { const n = await setAllVisibility('private', entries); toast(`${n} entradas ahora privadas`, 'ok'); } catch (x) { toast(x.message, 'err'); } finally { setBulk(''); } }}>${bulk === 'private' ? 'Aplicando…' : 'Hacer todo privado'}</button>
+            <button class="btn ghost" disabled=${!!bulk} onClick=${async () => { if (!confirm(t('¿Hacer público todo tu diario? Las notas seguirán siendo privadas salvo que las publiques.'))) return; setBulk('public'); try { const n = await setAllVisibility('public', entries); toast(`${n} entradas ahora públicas`, 'ok'); } catch (x) { toast(x.message, 'err'); } finally { setBulk(''); } }}>${bulk === 'public' ? 'Aplicando…' : 'Hacer todo público'}</button>
+          </div>
+        </div>
         <dl class="kv" style="max-width:640px">
           <dt>Email</dt><dd>${user.email || '—'}</dd>
           <dt>Acceso</dt><dd>${(user.providerData || []).map((x) => (x.providerId === 'google.com' ? 'Google' : 'Email y contraseña')).join(', ') || '—'}</dd>
