@@ -916,3 +916,21 @@ a.stat:hover::before { width: 100%; }
 @media (max-width: 1200px) { .header .add-lbl { display: inline; } }
 @media (max-width: 640px) { .header .add-lbl { display: none; } }
 @media (min-width: 1201px) and (max-width: 1700px) { .header .logo .lt { display: none; } .header .wrap { gap: 12px; } .nav a { padding: 0 8px; } .header-actions { gap: 6px; } }
+
+.lazy-more { display: flex; justify-content: center; padding: 32px 0 8px; }
+
+/* ── móvil: memoria gráfica (iOS se reinicia con cientos de capas con desenfoque) ── */
+@media (max-width: 900px), (pointer: coarse) {
+  .pcard .st { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(5, 6, 10, .86); }
+  .header { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(5, 6, 10, .97); }
+  .bottom-nav { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(5, 6, 10, .97); }
+  .more-sheet { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(5, 6, 10, .9); }
+  .auth .form { backdrop-filter: none; }
+  .reveal, .reveal.in { opacity: 1; transform: none; filter: none; transition: none; }
+  .post { animation: none; }
+  .fx-grid { display: none; }
+  .pcard, .feed-item, .post, .cal-item, .news-item, .tvrow { content-visibility: auto; contain-intrinsic-size: auto 320px; }
+  .pcard img, .pcard .gen-poster { transition: none; }
+  .pstrip .bg img { transform: none; transition: none; }
+  * { will-change: auto !important; }
+}
