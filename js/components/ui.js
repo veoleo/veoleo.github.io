@@ -6,7 +6,8 @@ import { burstAt, flash, scramble, countUp } from '../lib/fx.js';
 import { useStore } from '../lib/store.js';
 import { watchProviders, platformsOf, hasTmdb } from '../lib/metadata.js';
 import { Icon } from './icons.js';
-import { SUPPORT_URL } from '../config.js';
+import { SUPPORT_URL, CONTACT_EMAIL } from '../config.js';
+import { LANG, setLang, t as tr } from '../lib/i18n.js';
 
 export { html, Icon };
 
@@ -18,7 +19,7 @@ export function useAsync(fn, deps = []) {
     setSt((s) => ({ ...s, loading: true, error: null }));
     Promise.resolve().then(fn).then(
       (data) => alive && setSt({ loading: false, data, error: null }),
-      (error) => { console.error('[TVDaily]', error); alive && setSt({ loading: false, data: null, error }); },
+      (error) => { console.error('[Veoleo]', error); alive && setSt({ loading: false, data: null, error }); },
     );
     return () => { alive = false; };
   }, deps);
@@ -29,7 +30,7 @@ export function useAsync(fn, deps = []) {
 // El texto lo escribe sólo el efecto (sin hijos de Preact) para no duplicarse.
 export function Scramble({ text, as = 'span', class: cls = '', ms = 700 }) {
   const ref = useRef();
-  const t = String(text ?? '');
+  const t = tr(String(text ?? ''));
   useLayoutEffect(() => { if (ref.current) ref.current.textContent = t; scramble(ref.current, t, ms); }, [t]);
   return html`<${as} ref=${ref} class=${cls} aria-label=${t}></${as}>`;
 }
@@ -80,7 +81,7 @@ export function Stars({ value = 0, onChange, size = 28, readOnly = false, showVa
 /* ── póster generado cuando no hay imagen ── */
 export function GenPoster({ title, type }) {
   return html`<div class="gen-poster" style=${`--gc:${TYPES[type]?.color || paletteFor(title)}`}>
-    <span>${TYPES[type]?.label || 'TVDaily'}</span><b>${title}</b></div>`;
+    <span>${TYPES[type]?.label || 'Veoleo'}</span><b>${title}</b></div>`;
 }
 
 // Imagen redimensionada; si falla, la original; si también falla, póster generado.
@@ -280,16 +281,17 @@ export function Footer() {
   return html`<footer class="footer">
     <div class="wrap">
       <div class="stack" style="--g:14px;max-width:460px">
-        <a class="logo" href="#/"><i></i><span class="lt">TVDaily</span></a>
+        <a class="logo" href="#/"><i></i><span class="lt">Veoleo</span></a>
         <p class="small muted" style="margin:0">Tu diario de series, películas, libros y audiolibros. Hecho con cariño y sin anuncios: si te gusta, puedes apoyarlo con un café.</p>
         <div class="row"><${SupportButton} /></div>
+        <a class="contact" href=${`mailto:${CONTACT_EMAIL}?subject=Veoleo`} data-no-i18n><${Icon} name="mail" size=${15} /> ${CONTACT_EMAIL}</a>
       </div>
       <nav class="footer-links">
         <a href="#/discover">Novedades</a><a href="#/guide">Guía TV</a><a href="#/news">Noticias</a><a href="#/stats">Estadísticas</a>
-        <a href="#/data">Importar y exportar</a><a href="#/settings">Ajustes</a>
+        <a href="#/data">Importar y exportar</a><a href="#/explore">Comunidad</a><a href="#/about">Qué es Veoleo</a><a href="#/settings">Ajustes</a>
       </nav>
     </div>
-    <div class="wrap"><span class="count">© ${new Date().getFullYear()} TVDaily · Datos de TVMaze, Wikidata, IMDb, Apple, Google Books y Open Library</span></div>
+    <div class="wrap"><span class="count">© ${new Date().getFullYear()} Veoleo · Datos de TVMaze, Wikidata, IMDb, Apple, Google Books y Open Library</span></div>
   </footer>`;
 }
 
@@ -302,4 +304,16 @@ export function AsyncButton({ onClick, children, class: cls = 'btn', ...rest }) 
     setBusy(true);
     try { await onClick?.(e); } finally { if (alive.current) setBusy(false); }
   }}>${children}</button>`;
+}
+
+/* ── idioma: bandera ES / EN ── */
+const FLAGS = {
+  es: html`<svg viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#c60b1e"/><rect y="5" width="30" height="10" fill="#ffc400"/></svg>`,
+  en: html`<svg viewBox="0 0 60 30" aria-hidden="true"><clipPath id="ukc"><path d="M30 15h30v15zv15H0zH0V0zV0h30z"/></clipPath><path d="M0 0v30h60V0z" fill="#012169"/><path d="M0 0l60 30m0-30L0 30" stroke="#fff" stroke-width="6"/><path d="M0 0l60 30m0-30L0 30" clip-path="url(#ukc)" stroke="#C8102E" stroke-width="4"/><path d="M30 0v30M0 15h60" stroke="#fff" stroke-width="10"/><path d="M30 0v30M0 15h60" stroke="#C8102E" stroke-width="6"/></svg>`,
+};
+export function LangToggle() {
+  return html`<div class="lang" role="group" aria-label="Idioma / Language" data-no-i18n>
+    ${['es', 'en'].map((l) => html`<button key=${l} class=${LANG === l ? 'on' : ''} aria-pressed=${LANG === l} title=${l === 'es' ? 'Español' : 'English'}
+      onClick=${() => { if (LANG !== l) { sfx.click(); setLang(l); } }}>${FLAGS[l]}<span>${l.toUpperCase()}</span></button>`)}
+  </div>`;
 }
