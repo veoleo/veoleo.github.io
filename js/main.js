@@ -36,6 +36,7 @@ const NAV = [
   ['library', 'library', 'Biblioteca', 'grid'],
   ['lists', 'lists', 'Listas', 'list'],
   ['challenges', 'challenges', 'Retos', 'trophy'],
+  ['graph', 'graph', 'Grafo', 'graph'],
   ['explore', 'explore', 'Comunidad', 'users'],
 ];
 
@@ -66,7 +67,7 @@ function Palette({ onClose }) {
   const input = useRef();
   useEffect(() => { input.current?.focus(); sfx.open(); }, []);
   const ql = q.trim().toLowerCase();
-  const nav = [...NAV, ['search', 'search', 'Buscar', 'search'], ['stats', 'stats', 'Estadísticas', 'chart'], ['data', 'data', 'Importar y exportar', 'database'], ['settings', 'settings', 'Ajustes', 'settings'], ['graph', 'graph', 'Grafo', 'graph'], ['about', 'about', 'Qué es Veoleo', 'info']]
+  const nav = [...NAV, ['search', 'search', 'Buscar', 'search'], ['stats', 'stats', 'Estadísticas', 'chart'], ['data', 'data', 'Importar y exportar', 'database'], ['settings', 'settings', 'Ajustes', 'settings'], ['about', 'about', 'Qué es Veoleo', 'info']]
     .filter(([, , l]) => !ql || l.toLowerCase().includes(ql)).map(([k, path, label, icon]) => ({ kind: 'nav', label, icon, href: '#/' + path }));
   const mine = ql ? entries.filter((e) => e.title.toLowerCase().includes(ql)).slice(0, 8).map((e) => ({ kind: 'entry', e, label: e.title, href: `#/item/${e.id}` })) : [];
   const searches = ql.length > 1 ? Object.values(TYPES).map((t) => ({ kind: 'search', label: `Buscar “${q.trim()}” en ${t.plural.toLowerCase()}`, icon: t.ico, href: `#/search?type=${t.key}&q=${encodeURIComponent(q.trim())}` })) : [];
