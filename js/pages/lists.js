@@ -17,7 +17,8 @@ export function systemLists(entries) {
   return [
     { id: 'sys-mustwatch', name: 'Must watch', description: 'Series y películas pendientes', rules: { types: ['series', 'movie'], statuses: ['planned'] }, c: 'var(--pink)' },
     { id: 'sys-toread', name: 'Por leer y escuchar', description: 'Libros y audiolibros pendientes', rules: { types: ['book', 'audiobook'], statuses: ['planned'] }, c: 'var(--yellow)' },
-    { id: 'sys-now', name: 'En curso', description: 'Lo que estás viendo, leyendo o escuchando', rules: { statuses: ['in_progress'] }, c: 'var(--blue)' },
+    { id: 'sys-now', name: 'En curso', description: 'Lo que estás viendo, leyendo o escuchando', rules: { statuses: ['in_progress'] }, c: 'var(--yellow)' },
+    { id: 'sys-uptodate', name: 'Al día', description: 'Series en emisión que llevas al día', rules: { types: ['series'], statuses: ['up_to_date'] }, c: 'var(--blue)' },
     { id: 'sys-abandoned', name: 'Abandonadas', description: 'Lo que dejaste a medias', rules: { statuses: ['abandoned'] }, c: 'var(--muted)' },
     { id: 'sys-best', name: 'Obras maestras', description: 'Todo lo que tiene 5 estrellas', rules: { minRating: 5 }, c: 'var(--orange)' },
     { id: `sys-year-${y}`, name: `Mi ${y}`, description: `Todo lo terminado en ${y}`, rules: { statuses: ['completed'], yearFrom: y, yearTo: y }, c: 'var(--accent)' },
@@ -45,7 +46,7 @@ export function itemsOfList(list, entries) {
 export function ListCard({ l, href }) {
   const items = l.items || [];
   return html`<a class="list-card" href=${href || `#/list/${l.id}`} style=${`--c:${l.c || 'var(--accent)'}`} onMouseEnter=${() => sfx.hover()}>
-    <div class="stackp">${items.length ? items.slice(0, 6).map((e) => html`<div key=${e.id}><${Cover} src=${e.cover} title=${e.title} type=${e.type} /></div>`) : html`<div class="none">VACÍA</div>`}</div>
+    <div class="stackp">${items.length ? items.slice(0, 6).map((e) => html`<div key=${e.id}><${Cover} src=${e.cover} title=${e.title} type=${e.type} w=${180} /></div>`) : html`<div class="none">VACÍA</div>`}</div>
     <h3>${l.name}</h3>
     <span class="label">${l.kind === 'smart' || l.kind === 'system' || l.kind === 'auto' ? 'Automática · ' : ''}${items.length} ${items.length === 1 ? 'título' : 'títulos'}${l.isPublic === false ? ' · Privada' : ''}</span>
   </a>`;

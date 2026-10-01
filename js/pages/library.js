@@ -3,7 +3,7 @@ import { html, useState, useMemo } from 'preact-standalone';
 import { PosterCard, Tabs, Chip, SkeletonGrid, Modal, Icon, Scramble } from '../components/ui.js';
 import { useStore, toast } from '../lib/store.js';
 import { setQuery } from '../lib/router.js';
-import { TYPES, STATUS_KEYS, statusLabel, entryYear, matchRules, sortEntries, uniq } from '../lib/utils.js';
+import { TYPES, statusKeysFor, STATUS_COLORS, statusLabel, entryYear, matchRules, sortEntries, uniq } from '../lib/utils.js';
 import { platformsOf } from '../lib/metadata.js';
 import { getNotesBulk } from '../lib/db.js';
 import { bulkExportZip, bulkExportSingle } from '../lib/markdown.js';
@@ -11,7 +11,6 @@ import { exportJSON, exportCSV } from '../lib/transfer.js';
 import { sfx } from '../lib/sound.js';
 import { flash } from '../lib/fx.js';
 
-const STATUS_COLORS = { completed: 'var(--teal)', in_progress: 'var(--yellow)', planned: 'var(--pink)', abandoned: 'var(--muted)' };
 
 export function readFilters(q) {
   return {
@@ -30,7 +29,8 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
   const years = uniq(base.map(entryYear)).sort((a, b) => b - a);
   const genres = uniq(base.flatMap((e) => e.genres || [])).sort((a, b) => a.localeCompare(b, 'es'));
   const platforms = uniq(base.flatMap((e) => [e.platform, ...platformsOf(e), e.consumption?.readOn, e.consumption?.listenedOn])).sort();
-  const counts = Object.fromEntries(STATUS_KEYS.map((s) => [s, base.filter((e) => e.status === s).length]));
+  const keys = statusKeysFor(f.type);
+  const counts = Object.fromEntries(keys.map((s) => [s, base.filter((e) => e.status === s).length]));
 
   const shown = useMemo(() => sortEntries(base.filter((e) => matchRules(e, {
     statuses: f.status ? [f.status] : [], yearFrom: f.year, yearTo: f.year, minRating: f.minRating,
@@ -47,7 +47,7 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
       <div class="filters" style="border-top:0">
         <div class="filter-row"><span class="label">Estado</span>
           <${Chip} on=${!f.status} onClick=${() => set({ status: '' })}>Todos <span class="n">${base.length}</span></${Chip}>
-          ${STATUS_KEYS.map((s) => html`<${Chip} key=${s} on=${f.status === s} color=${STATUS_COLORS[s]} onClick=${() => set({ status: f.status === s ? '' : s })}>
+          ${keys.map((s) => html`<${Chip} key=${s} on=${f.status === s} color=${STATUS_COLORS[s]} onClick=${() => set({ status: f.status === s ? '' : s })}>
             ${statusLabel(s, f.type || 'any')} <span class="n">${counts[s]}</span></${Chip}>`)}
         </div>
         <div class="filter-row"><span class="label">Ranking</span>

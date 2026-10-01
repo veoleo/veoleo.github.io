@@ -4,7 +4,8 @@ import { html, useState, useEffect } from 'preact-standalone';
 import { PosterCard, Chip, Spinner, useAsync, SectionHead, Scramble } from '../components/ui.js';
 import { PreviewModal, findExisting } from '../components/preview.js';
 import { useStore } from '../lib/store.js';
-import { discoverSections, STREAMERS, recommendationsFor, nextEpisodeOf } from '../lib/metadata.js';
+import { discoverSections, STREAMERS, recommendationsFor } from '../lib/metadata.js';
+import { myEpisodes } from '../lib/sync.js';
 import { feedFor } from '../lib/db.js';
 import { humanDate, todayISO, TYPES } from '../lib/utils.js';
 import { setQuery } from '../lib/router.js';
@@ -66,34 +67,20 @@ export function DiscoverPage({ route }) {
   </div>`;
 }
 
-// Próximos episodios de tus series (en curso, pendientes o terminadas que siguen en emisión).
-export function Calendar({ entries, settings, compact = false }) {
-  const series = entries.filter((e) => e.type === 'series' && e.status !== 'abandoned' && (e.status !== 'completed' || !/Ended|Canceled/.test(e.showStatus || '')));
-  const key = series.map((e) => e.id).join(',');
-  const cal = useAsync(async () => {
-    const today = todayISO();
-    const out = [];
-    const queue = series.slice(0, 40);
-    await Promise.all(Array.from({ length: 5 }, async () => {
-      while (queue.length) {
-        const e = queue.shift();
-        let n = e.nextEpisode;
-        if (!n || !n.airdate || n.airdate < today) n = await nextEpisodeOf(e, settings).catch(() => null);
-        if (n?.airdate && n.airdate >= today) out.push({ e, n });
-      }
-    }));
-    return out.sort((a, b) => a.n.airdate.localeCompare(b.n.airdate));
-  }, [key]);
-  if (!series.length) return null;
+// Próximos episodios de tus series (resumen; el detalle está en la Guía TV).
+export function Calendar({ entries }) {
+  const cal = useAsync(() => myEpisodes(entries), [entries.map((e) => `${e.id}:${e.status}`).join(',')]);
+  if (!entries.some((e) => e.type === 'series')) return null;
+  const items = cal.data?.upcoming || [];
   return html`<section class="section">
-    <${SectionHead} kicker="Tu calendario" title="Próximos episodios" color="var(--red)" />
-    ${cal.loading ? html`<${Spinner} />` : !cal.data?.length ? html`<p class="muted">Ninguna de tus series tiene episodios anunciados por ahora.</p>`
-      : html`<div class="grid" style="--min:360px;gap:0 40px">${cal.data.slice(0, compact ? 6 : 30).map(({ e, n }) => {
-          const d = new Date(n.airdate + 'T12:00:00');
+    <${SectionHead} kicker="Tu calendario" title="Próximos episodios" color="var(--red)"><a class="btn ghost sm" href="#/guide">Guía TV completa</a></${SectionHead}>
+    ${cal.loading ? html`<${Spinner} />` : !items.length ? html`<p class="muted">Ninguna de tus series tiene episodios anunciados por ahora.</p>`
+      : html`<div class="grid" style="--min:360px;gap:0 40px">${items.slice(0, 8).map((x) => {
+          const d = new Date(x.airdate + 'T12:00:00');
           const days = Math.round((d - new Date(todayISO() + 'T12:00:00')) / 864e5);
-          return html`<a class="cal-item" key=${e.id} href=${`#/item/${e.id}`}>
+          return html`<a class="cal-item" key=${x.e.id + x.code} href=${`#/item/${x.e.id}`}>
             <div class="cal-date"><b>${d.getDate()}</b><span>${d.toLocaleDateString('es-ES', { month: 'short' })}</span></div>
-            <div style="min-width:0"><div style="font-weight:600">${e.title}</div><div class="count" style="margin-top:4px">${n.code} · ${n.name || ''}</div></div>
+            <div style="min-width:0"><div style="font-weight:600">${x.e.title}</div><div class="count" style="margin-top:4px">${x.code} · ${x.name || ''}</div></div>
             <span class="tag" style=${`--c:${days === 0 ? 'var(--accent)' : 'var(--muted)'}`}>${days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : `En ${days} d`}</span>
           </a>`;
         })}</div>`}

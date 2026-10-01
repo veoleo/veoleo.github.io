@@ -1,6 +1,6 @@
 // Inicio: héroe, tu año en cifras, seguir viendo, recomendaciones, noticias y actividad.
 import { html, useState } from 'preact-standalone';
-import { PosterCard, Cover, Avatar, Stars, useAsync, StatusBadge, SectionHead, Icon, Scramble, CountUp } from '../components/ui.js';
+import { PosterCard, Cover, BgImg, Avatar, Stars, useAsync, StatusBadge, SectionHead, Icon, Scramble, CountUp } from '../components/ui.js';
 import { PreviewModal } from '../components/preview.js';
 import { useStore } from '../lib/store.js';
 import { feedFor } from '../lib/db.js';
@@ -39,7 +39,7 @@ export function HomePage() {
   return html`<div class="page wrap">
     ${featured ? html`
       <a class="hero" href=${`#/item/${featured.id}`} style=${`--c:${TYPES[featured.type]?.color}`}>
-        ${(featured.backdrop || featured.cover) && html`<div class="bg"><img src=${featured.backdrop || featured.cover} alt="" style=${featured.backdrop ? '' : 'filter:blur(40px);transform:scale(1.3)'} /></div>`}
+        ${(featured.backdrop || featured.cover) && html`<div class="bg"><${BgImg} src=${featured.backdrop || featured.cover} w=${featured.backdrop ? 1400 : 400} style=${featured.backdrop ? '' : 'filter:blur(40px);transform:scale(1.3)'} /></div>`}
         <div class="wrap">
           <div class="stack" style="--g:22px;max-width:1000px">
             <div class="kicker">${hello}${first ? ', ' + first : ''} · ${featured.status === 'in_progress' ? 'Sigue donde lo dejaste' : 'Lo último en tu diario'}</div>
@@ -114,6 +114,6 @@ export function FeedItem({ e }) {
         ${e.hasNote && e.notePublic && html`<span class="tag" style="--c:var(--purple)">Nota</span>`}
       </div>
     </div>
-    <div class="thumb"><${Cover} src=${e.cover} title=${e.title} type=${e.type} /></div>
+    <div class="thumb"><${Cover} src=${e.cover} title=${e.title} type=${e.type} w=${120} /></div>
   </a>`;
 }

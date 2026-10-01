@@ -1,6 +1,6 @@
 // Ficha de una entrada: héroe, estrellas, episodios, nota, tráiler, banda sonora, reparto y comentarios.
 import { html, useState, useEffect } from 'preact-standalone';
-import { Stars, Cover, TypeBadge, StatusBadge, Providers, Avatar, Spinner, Modal, Icon, Scramble, shareLink } from '../components/ui.js';
+import { Stars, Cover, BgImg, TypeBadge, StatusBadge, Providers, Avatar, Spinner, Modal, Icon, Scramble, shareLink } from '../components/ui.js';
 import { Trailer, Soundtrack, CastRow, AudioPreview } from '../components/media.js';
 import { EpisodesPanel } from '../components/episodes.js';
 import { NoteEditor, LikeButton, Comments } from '../components/social.js';
@@ -89,10 +89,10 @@ export function ItemPage({ id }) {
   return html`
     <div class="page wrap">
       <section class="hero" style=${`--c:${T.color}`}>
-        ${(e.backdrop || e.cover) && html`<div class="bg"><img src=${e.backdrop || e.cover} alt="" style=${e.backdrop ? '' : 'filter:blur(40px) saturate(1.2);transform:scale(1.3)'} /></div>`}
+        ${(e.backdrop || e.cover) && html`<div class="bg"><${BgImg} src=${e.backdrop || e.cover} w=${e.backdrop ? 1400 : 400} style=${e.backdrop ? '' : 'filter:blur(40px) saturate(1.2);transform:scale(1.3)'} /></div>`}
         <div class="wrap">
           <div class="hero-inner">
-            <div class="hero-poster"><${Cover} src=${e.cover} title=${e.title} type=${e.type} /></div>
+            <div class="hero-poster"><${Cover} src=${e.cover} title=${e.title} type=${e.type} w=${500} /></div>
             <div class="stack" style="--g:20px">
               ${!mine && html`<a href=${`#/u/${e.ownerId}`} class="row" style="--g:10px;text-decoration:none"><${Avatar} user=${e} size=${30} /><span class="sub">Diario de ${e.ownerName}</span></a>`}
               <div class="meta-line"><${TypeBadge} type=${e.type} /><${StatusBadge} status=${e.status} type=${e.type} />

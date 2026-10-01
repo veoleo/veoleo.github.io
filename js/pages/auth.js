@@ -1,8 +1,9 @@
 // Pantalla de acceso / registro con muro animado de pósters.
 import { html, useState, useEffect } from 'preact-standalone';
-import { Icon, Scramble } from '../components/ui.js';
+import { Icon, Scramble, SupportButton } from '../components/ui.js';
 import { loginEmail, registerEmail, loginGoogle, resetPassword, authErrorText } from '../lib/db.js';
 import { appleTop } from '../lib/metadata.js';
+import { img } from '../lib/utils.js';
 import { sfx } from '../lib/sound.js';
 import { flash } from '../lib/fx.js';
 import { toast } from '../lib/store.js';
@@ -10,8 +11,9 @@ import { toast } from '../lib/store.js';
 function Wall() {
   const [posters, setPosters] = useState([]);
   useEffect(() => {
-    Promise.all([appleTop('movie', 'es', 60).catch(() => []), appleTop('movie', 'us', 60).catch(() => [])])
-      .then(([a, b]) => setPosters([...a, ...b].map((x) => x.cover).filter(Boolean)));
+    // Sólo en pantallas grandes: en móvil el muro se oculta para ahorrar memoria.
+    if (window.matchMedia('(max-width: 900px), (pointer: coarse)').matches) return;
+    appleTop('movie', 'es', 36).catch(() => []).then((a) => setPosters(a.map((x) => img(x.cover, 220)).filter(Boolean)));
   }, []);
   if (!posters.length) return null;
   const cols = Array.from({ length: 6 }, (_, c) => posters.filter((_, i) => i % 6 === c));
@@ -59,7 +61,7 @@ export function AuthPage() {
               .map((t) => html`<span>${t}</span>`)}
           </div>
         </div>
-        <span class="label">© ${new Date().getFullYear()} TVDaily</span>
+        <div class="row between"><span class="label">© ${new Date().getFullYear()} TVDaily</span><${SupportButton} size="sm" /></div>
       </section>
 
       <form class="form" onSubmit=${submit}>
