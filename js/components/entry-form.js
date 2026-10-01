@@ -6,7 +6,8 @@ import {
 } from '../lib/utils.js';
 import { createEntry, updateEntry, updateList, defaultVisibility } from '../lib/db.js';
 import { toast, useStore } from '../lib/store.js';
-import { platformsOf, toEntryFields } from '../lib/metadata.js';
+import { platformsOf, toEntryFields, allAiredPatch } from '../lib/metadata.js';
+import { YearPicker, yearChoiceOf, yearPatch, CUR_YEAR } from './yearpick.js';
 import { sfx } from '../lib/sound.js';
 import { flash, scan } from '../lib/fx.js';
 import { go } from '../lib/router.js';
@@ -30,6 +31,7 @@ export function EntryForm({ draft, onClose, onSaved }) {
     trailerUrl: draft.trailer?.youtube ? `https://youtu.be/${draft.trailer.youtube}` : draft.trailer?.url || '',
     genres: (draft.genres || []).join(', '), creators: (draft.creators || []).join(', '), narrator: draft.narrator || '',
     pages: draft.pages || '', releaseDate: draft.releaseDate || '',
+    yearChoice: yearChoiceOf(draft, !isEdit),
   }));
   const manualLists = lists.filter((l) => l.kind !== 'smart');
   const [inLists, setInLists] = useState(() => manualLists.filter((l) => (l.itemIds || []).includes(draft.id)).map((l) => l.id));
@@ -60,9 +62,16 @@ export function EntryForm({ draft, onClose, onSaved }) {
         genres: normGenres(f.genres.split(',')), creators: uniq(f.creators.split(',').map((x) => x.trim())),
         narrator: f.narrator.trim(), pages: Number(f.pages) || null, releaseDate: f.releaseDate || '',
       };
+      // Año de visionado: este año, otro año o «Otros años».
+      if (['completed', 'up_to_date', 'abandoned'].includes(f.status)) Object.assign(data, yearPatch(f.yearChoice, f.finishedAt));
+      else Object.assign(data, { yearUnknown: false, watchedYear: null });
       let id = draft.id;
       if (isEdit) await updateEntry(id, data);
       else id = await createEntry({ ...data, watchedEpisodes: draft.watchedEpisodes || [], hasNote: false, notePublic: false });
+      // «Al día» o «Vista» en una serie: todos los episodios emitidos quedan marcados.
+      if (f.type === 'series' && ['up_to_date', 'completed'].includes(f.status) && (!isEdit || draft.status !== f.status)) {
+        allAiredPatch({ ...draft, ...data, id }).then((p) => p && updateEntry(id, p)).catch(() => {});
+      }
       for (const l of manualLists) {
         const has = (l.itemIds || []).includes(id), want = inLists.includes(l.id);
         if (want && !has) await updateList(l.id, { itemIds: [...(l.itemIds || []), id] });
@@ -96,15 +105,19 @@ export function EntryForm({ draft, onClose, onSaved }) {
         <div class="field"><span class="label">Estado</span>
           <div class="row" style="--g:8px">
             ${statusKeysFor(f.type).map((s) => html`<${Chip} key=${s} on=${f.status === s} color=${STATUS_COLORS[s]}
-              onClick=${() => set({ status: s, finishedAt: s === 'completed' && !f.finishedAt ? todayISO() : f.finishedAt })}>${statusLabel(s, f.type)}</${Chip}>`)}
+              onClick=${() => set({ status: s, finishedAt: s === 'completed' && !f.finishedAt && f.yearChoice === 'this' ? todayISO() : f.finishedAt })}>${statusLabel(s, f.type)}</${Chip}>`)}
           </div>
           ${f.status === 'abandoned' && html`<span class="small muted">Se guardará en tu lista Abandonadas.</span>`}
           ${f.status === 'planned' && html`<span class="small muted">Se guardará en ${isBook ? 'Por leer' : 'Must watch'}.</span>`}
         </div>
 
+        ${['completed', 'up_to_date', 'abandoned'].includes(f.status) && html`<div class="field"><span class="label">${f.status === 'abandoned' ? '¿Cuándo lo dejaste?' : isBook ? '¿Qué año lo terminaste?' : '¿Qué año lo viste?'}</span>
+          <${YearPicker} value=${f.yearChoice} onChange=${(v) => set({ yearChoice: v, finishedAt: yearPatch(v, f.finishedAt).finishedAt })} />
+          ${f.yearChoice === 'unknown' && html`<span class="small muted">Irá a «Otros años»: cuenta en tu diario pero no en las listas ni retos de un año concreto.</span>`}</div>`}
+
         <div class="row" style="--g:20px;align-items:flex-end">
           <div class="field grow"><label>Empezado</label><input class="input" type="date" value=${f.startedAt} onInput=${(e) => set({ startedAt: e.currentTarget.value })} /></div>
-          ${f.status !== 'planned' && html`<div class="field grow"><label>${f.status === 'abandoned' ? 'Abandonado' : 'Terminado'}</label><input class="input" type="date" value=${f.finishedAt} onInput=${(e) => set({ finishedAt: e.currentTarget.value })} /></div>`}
+          ${f.status !== 'planned' && html`<div class="field grow"><label>${f.status === 'abandoned' ? 'Abandonado' : 'Terminado'}</label><input class="input" type="date" value=${f.finishedAt} onInput=${(e) => { const v = e.currentTarget.value; const y = Number(v.slice(0, 4)); set({ finishedAt: v, yearChoice: !v ? f.yearChoice : y === CUR_YEAR ? 'this' : y }); }} /></div>`}
           ${!isBook && f.status === 'completed' && html`<div class="field" style="width:130px"><label>Revisionados</label><input class="input" type="number" min="0" value=${f.rewatch} onInput=${(e) => set({ rewatch: e.currentTarget.value })} /></div>`}
         </div>
 
