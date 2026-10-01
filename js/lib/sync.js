@@ -88,7 +88,7 @@ export function myEpisodes(entries) {
 // Libros y audiolibros sin portada (p. ej. importados de Goodreads): se buscan solos al entrar, poco a poco.
 let coversTried = new Set();
 export async function fillMissingCovers(entries) {
-  const todo = entries.filter((e) => (e.type === 'book' || e.type === 'audiobook') && !e.cover && !e.coverMissing && !coversTried.has(e.id)).slice(0, 40);
+  const todo = entries.filter((e) => (e.type === 'book' || e.type === 'audiobook') && !e.cover && (!e.coverMissing || cleanBookTitle(e.title) !== e.title) && !coversTried.has(e.id)).slice(0, 40);
   let n = 0;
   await pool(todo, 3, async (e) => {
     coversTried.add(e.id);

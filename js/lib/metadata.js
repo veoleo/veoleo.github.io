@@ -882,6 +882,7 @@ export function cleanBookTitle(t) {
   let s = String(t || '');
   const m = s.match(/^\s*\[\s*(.+?)\s*\]\s*By\b/i);
   if (m) s = m[1];
+  s = s.replace(/\s+by\s+[^()]+\(\d{4}(-\d{2}){0,2}\)\s*$/i, '').replace(/\s*\(\d{4}-\d{2}-\d{2}\)\s*$/, '');
   s = s.replace(/\[\s*(paperback|hardcover|kindle edition)\s*\]/gi, '').replace(/\((paperback|hardcover|kindle edition)\)/gi, '').trim();
   if (s === s.toUpperCase() && /[A-Z]/.test(s)) s = s.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
   return s;
