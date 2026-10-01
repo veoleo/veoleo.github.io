@@ -10,6 +10,8 @@ service cloud.firestore {
 
     function authed() { return request.auth != null; }
     function uid() { return request.auth.uid; }
+    // Invitados («Probar sin cuenta»): todo menos la parte social, y su diario siempre privado.
+    function realUser() { return request.auth.token.firebase.sign_in_provider != 'anonymous'; }
     // Nombre y @usuario reales en lo que se publica (nadie puede firmar como otra persona).
     function signedAsMe() {
       let me = get(/databases/$(database)/documents/users/$(uid())).data;
@@ -43,15 +45,17 @@ service cloud.firestore {
       allow read: if authed() && (resource.data.visibility == 'public' || resource.data.ownerId == uid());
       allow create: if authed() && request.resource.data.ownerId == uid()
         && request.resource.data.visibility in ['public', 'private']
+        && (realUser() || request.resource.data.visibility == 'private')
         && request.resource.data.type in ['series', 'movie', 'book', 'audiobook'];
       allow update: if authed() && resource.data.ownerId == uid()
         && request.resource.data.ownerId == uid()
-        && request.resource.data.visibility in ['public', 'private'];
+        && request.resource.data.visibility in ['public', 'private']
+        && (realUser() || request.resource.data.visibility == 'private');
       allow delete: if authed() && resource.data.ownerId == uid();
 
       match /comments/{commentId} {
         allow read: if authed() && entryReadable(entryId);
-        allow create: if authed() && entryReadable(entryId)
+        allow create: if authed() && realUser() && entryReadable(entryId)
           && request.resource.data.authorId == uid() && signedAsMe()
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
@@ -62,7 +66,8 @@ service cloud.firestore {
 
       match /likes/{likerId} {
         allow read: if authed() && entryReadable(entryId);
-        allow create, delete: if authed() && likerId == uid() && entryReadable(entryId);
+        allow create: if authed() && realUser() && likerId == uid() && entryReadable(entryId);
+        allow delete: if authed() && likerId == uid() && entryReadable(entryId);
       }
     }
 
@@ -91,7 +96,7 @@ service cloud.firestore {
 
     match /posts/{postId} {
       allow read: if authed();
-      allow create: if authed() && request.resource.data.authorId == uid() && signedAsMe()
+      allow create: if authed() && realUser() && request.resource.data.authorId == uid() && signedAsMe()
         && request.resource.data.text is string && request.resource.data.text.size() <= 500
         && request.resource.data.likeCount == 0 && request.resource.data.replyCount == 0;
       allow update: if authed() && (
@@ -104,11 +109,12 @@ service cloud.firestore {
 
       match /likes/{likerId} {
         allow read: if authed();
-        allow create, delete: if authed() && likerId == uid();
+        allow create: if authed() && realUser() && likerId == uid();
+        allow delete: if authed() && likerId == uid();
       }
       match /replies/{replyId} {
         allow read: if authed();
-        allow create: if authed() && request.resource.data.authorId == uid() && signedAsMe()
+        allow create: if authed() && realUser() && request.resource.data.authorId == uid() && signedAsMe()
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000
           && getAfter(postPath(postId)).data.replyCount == get(postPath(postId)).data.replyCount + 1;
@@ -118,7 +124,7 @@ service cloud.firestore {
 
     match /follows/{followId} {
       allow read: if authed();
-      allow create: if authed() && request.resource.data.followerId == uid()
+      allow create: if authed() && realUser() && request.resource.data.followerId == uid()
         && followId == uid() + '_' + request.resource.data.followingId
         && request.resource.data.followingId != uid();
       allow delete: if authed() && resource.data.followerId == uid();
