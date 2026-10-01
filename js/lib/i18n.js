@@ -254,6 +254,8 @@ const EN = {
   '¿Hacer público todo tu diario? Las notas seguirán siendo privadas salvo que las publiques.': 'Make your whole diary public? Notes stay private unless you publish them.',
   'Esta entrada es privada: al publicar, el título y tu progreso serán visibles en Comunidad.': 'This entry is private: posting will show its title and your progress in Community.',
 
+  'Buscando sinopsis…': 'Looking for a synopsis…', 'Más': 'More', 'Secciones': 'Sections', 'Más secciones': 'More sections', 'Mi perfil': 'My profile',
+
   // géneros
   'Acción': 'Action', 'Acción y aventura': 'Action & adventure', 'Aventura': 'Adventure', 'Animación': 'Animation', 'Anime': 'Anime', 'Biografía': 'Biography', 'Comedia': 'Comedy',
   'Crimen': 'Crime', 'Documental': 'Documentary', 'Drama': 'Drama', 'Familia': 'Family', 'Fantasía': 'Fantasy', 'Historia': 'History', 'Terror': 'Horror', 'Musical': 'Musical',

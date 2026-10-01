@@ -808,3 +808,30 @@ export async function backdropSearch(q) {
   const posters = movies.filter((m) => m.cover).slice(0, 8).map((m) => ({ url: m.cover, title: m.title, wide: false }));
   return [...wide, ...posters].slice(0, 40);
 }
+
+/* ── sinopsis general de un título que no la tiene (p. ej. importado de TV Time o Netflix) ── */
+export function overviewFor(e) {
+  return memoize(`ov|${e.id || e.title}|${LANG}`, 6 * 3600e3, async () => {
+    let base = ''; let imdb = e.ids?.imdb || e.imdbId || '';
+    if (e.type === 'series') {
+      const id = await tvmazeIdFor(e).catch(() => null);
+      const s = id ? await getJSON(`https://api.tvmaze.com/shows/${id}`).catch(() => null) : null;
+      base = stripHtml(s?.summary || ''); imdb = imdb || s?.externals?.imdb || '';
+    } else if (e.type === 'movie' && !imdb) {
+      const hit = (await wikidataSearch('movie', e.title).catch(() => [])).find((x) => !e.year || !x.year || Math.abs(x.year - e.year) <= 1);
+      imdb = hit?.imdbId || '';
+    } else if (e.type === 'book' || e.type === 'audiobook') {
+      const q = `intitle:${e.title}${e.creators?.[0] ? ` inauthor:${e.creators[0]}` : ''}`;
+      const hits = await googleBooks(q, e.type).catch(() => []);
+      const pick = hits.find((h) => h.overview && (LANG !== 'es' || h.language === 'es')) || hits.find((h) => h.overview);
+      return pick ? { overview: pick.overview } : null;
+    }
+    // Wikipedia en el idioma de la app si existe; si no, la sinopsis de TVMaze (inglés).
+    const wd = imdb ? await wikidataByImdb(imdb).catch(() => null) : null;
+    const w = wd ? await wikiSummary(LANG, LANG === 'es' ? wd.esTitle : wd.enTitle) : null;
+    if (w?.extract && w.extract.length > 80) return { overview: w.extract, wikiUrl: w.url };
+    if (base) return { overview: base };
+    const en = wd?.enTitle && LANG === 'es' ? await wikiSummary('en', wd.enTitle) : null;
+    return en?.extract ? { overview: en.extract, wikiUrl: en.url } : null;
+  });
+}

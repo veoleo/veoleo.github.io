@@ -1,7 +1,7 @@
 // Sincronización de series con su emisión real (TVMaze):
 //  · reconcilia estados (Viendo → Al día → Vista) al entrar en la app
 //  · calcula tus próximos episodios y los emitidos que te faltan por ver
-import { showInfo, seriesStatusFor, memoize } from './metadata.js';
+import { showInfo, seriesStatusFor, memoize, overviewFor } from './metadata.js';
 import { updateEntry } from './db.js';
 import { todayISO } from './utils.js';
 
@@ -37,6 +37,7 @@ export async function reconcileSeries(entries) {
     if (!e.ids?.tvmaze || (!e.ids?.tvdb && info.tvdbId)) patch.ids = { ...(e.ids || {}), tvmaze: info.tvmazeId, tvdb: e.ids?.tvdb || info.tvdbId || '', imdb: e.ids?.imdb || info.imdbId || '' };
     if (!e.cover && info.cover) patch.cover = info.cover;
     if (!e.network && info.network) patch.network = info.network;
+    if (!e.overview) { const ov = await overviewFor(e).catch(() => null); if (ov?.overview) Object.assign(patch, ov); }
     if (Object.keys(patch).length) await updateEntry(e.id, patch);
   });
   return moved;

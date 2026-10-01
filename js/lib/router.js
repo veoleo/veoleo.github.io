@@ -10,13 +10,20 @@ export function parseHash() {
   return { parts, query, name: parts[0] || 'home' };
 }
 
+// Al cambiar de pantalla se empieza siempre arriba (sin animación ni restauración del navegador).
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+export function scrollTop() {
+  document.documentElement.scrollTop = 0; document.body.scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+
 export function useRoute() {
   const [route, setRoute] = useState(parseHash());
   useEffect(() => {
     const h = () => {
       setRoute(parseHash());
       sfx.whoosh();
-      window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+      scrollTop();
     };
     window.addEventListener('hashchange', h);
     return () => window.removeEventListener('hashchange', h);
