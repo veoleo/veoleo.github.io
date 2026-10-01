@@ -908,3 +908,11 @@ a.stat:hover::before { width: 100%; }
 .status-pick button { border: 1px solid var(--line-2); background: rgba(5, 6, 10, .45); color: var(--text-2); font: 600 .74rem var(--f-mono); letter-spacing: .08em; text-transform: uppercase; padding: 9px 13px; cursor: pointer; transition: all .25s var(--ease); }
 .status-pick button:hover { color: var(--text); border-color: var(--c); }
 .status-pick button.on { background: var(--c); border-color: var(--c); color: var(--dark); box-shadow: 0 0 22px -6px var(--c); }
+
+.header .icon-sm { width: 38px; padding: 0; justify-content: center; }
+@media (max-width: 1500px) { .header .hide-sm.btn { padding: 9px 11px; } }
+
+@media (max-width: 1700px) { .header .snd { display: none; } .header .lang button span { display: none; } .header .lang button { padding: 0 8px; } .header .add-lbl { display: none; } }
+@media (max-width: 1200px) { .header .add-lbl { display: inline; } }
+@media (max-width: 640px) { .header .add-lbl { display: none; } }
+@media (min-width: 1201px) and (max-width: 1700px) { .header .logo .lt { display: none; } .header .wrap { gap: 12px; } .nav a { padding: 0 8px; } .header-actions { gap: 6px; } }
