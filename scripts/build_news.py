@@ -17,28 +17,43 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
-# (id, nombre, idioma, url, filtrar_por_palabras_clave)
+# (id, nombre, idioma, url, filtrar_por_palabras_clave, categoría: series | cine | plataformas | mixto)
 SOURCES = [
-    ("decider", "Decider", "en", "https://decider.com/feed/", False),
-    ("variety", "Variety", "en", "https://variety.com/v/tv/feed/", False),
-    ("deadline", "Deadline", "en", "https://deadline.com/category/tv/feed/", False),
-    ("tvline", "TVLine", "en", "https://tvline.com/feed/", False),
-    ("thr", "The Hollywood Reporter", "en", "https://www.hollywoodreporter.com/c/tv/feed/", False),
-    ("indiewire", "IndieWire", "en", "https://www.indiewire.com/c/tv/feed/", False),
-    ("collider", "Collider", "en", "https://collider.com/feed/category/tv/", False),
-    ("screenrant", "Screen Rant", "en", "https://screenrant.com/feed/tv/", False),
-    ("cbr", "CBR", "en", "https://www.cbr.com/feed/category/tv/", False),
-    ("tvinsider", "TV Insider", "en", "https://www.tvinsider.com/feed/", False),
-    ("whatsonnetflix", "What's on Netflix", "en", "https://www.whats-on-netflix.com/feed/", False),
-    ("guardian", "The Guardian", "en", "https://www.theguardian.com/tv-and-radio/rss", False),
-    ("bbc", "BBC", "en", "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", True),
-    ("espinof", "Espinof", "es", "https://www.espinof.com/feedburner.xml", False),
-    ("fueradeseries", "Fuera de Series", "es", "https://www.fueradeseries.com/feed", False),
-    ("sensacine", "SensaCine", "es", "https://www.sensacine.com/rss/noticias-series.xml", False),
-    ("vertele", "Vertele", "es", "https://vertele.eldiario.es/rss/", False),
-    ("elpais", "El País", "es", "https://elpais.com/rss/cultura/television.xml", False),
-    ("xataka", "Xataka", "es", "https://www.xataka.com/feedburner.xml", True),
+    # Series
+    ("decider", "Decider", "en", "https://decider.com/feed/", False, "plataformas"),
+    ("variety", "Variety TV", "en", "https://variety.com/v/tv/feed/", False, "series"),
+    ("tvline", "TVLine", "en", "https://tvline.com/feed/", False, "series"),
+    ("thr", "The Hollywood Reporter", "en", "https://www.hollywoodreporter.com/c/tv/feed/", False, "series"),
+    ("collider", "Collider TV", "en", "https://collider.com/feed/category/tv/", False, "series"),
+    ("screenrant", "Screen Rant TV", "en", "https://screenrant.com/feed/tv/", False, "series"),
+    ("cbr", "CBR", "en", "https://www.cbr.com/feed/category/tv/", False, "series"),
+    ("tvinsider", "TV Insider", "en", "https://www.tvinsider.com/feed/", False, "series"),
+    ("guardian", "The Guardian", "en", "https://www.theguardian.com/tv-and-radio/rss", False, "series"),
+    ("bbc", "BBC", "en", "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", True, "mixto"),
+    ("sensacine", "SensaCine Series", "es", "https://www.sensacine.com/rss/noticias-series.xml", False, "series"),
+    ("vertele", "Vertele", "es", "https://vertele.eldiario.es/rss/", False, "series"),
+    ("elpais", "El País", "es", "https://elpais.com/rss/cultura/television.xml", False, "series"),
+    # Cine
+    ("variety-film", "Variety Cine", "en", "https://variety.com/v/film/feed/", False, "cine"),
+    ("thr-movies", "THR Cine", "en", "https://www.hollywoodreporter.com/c/movies/feed/", False, "cine"),
+    ("collider-movies", "Collider Cine", "en", "https://collider.com/feed/category/movies/", False, "cine"),
+    ("screenrant-movies", "Screen Rant Cine", "en", "https://screenrant.com/feed/movies/", False, "cine"),
+    ("slashfilm", "/Film", "en", "https://www.slashfilm.com/feed/", False, "mixto"),
+    ("cinemablend", "CinemaBlend", "en", "https://www.cinemablend.com/rss/topic/news/movies", False, "cine"),
+    ("sensacine-cine", "SensaCine Cine", "es", "https://www.sensacine.com/rss/noticias-cine.xml", False, "cine"),
+    ("fotogramas", "Fotogramas", "es", "https://www.fotogramas.es/rss/all.xml/", False, "mixto"),
+    ("cinemania", "Cinemanía", "es", "https://www.20minutos.es/rss/cinemania/", False, "mixto"),
+    ("espinof", "Espinof", "es", "https://www.espinof.com/feedburner.xml", False, "mixto"),
+    # Plataformas y streaming
+    ("whatsonnetflix", "What's on Netflix", "en", "https://www.whats-on-netflix.com/feed/", False, "plataformas"),
+    ("whatsondisney", "What's on Disney+", "en", "https://whatsondisneyplus.com/feed/", False, "plataformas"),
+    ("cordcutters", "Cord Cutters News", "en", "https://cordcuttersnews.com/feed/", False, "plataformas"),
+    ("xataka", "Xataka", "es", "https://www.xataka.com/feedburner.xml", True, "plataformas"),
 ]
+
+PLATFORM_RE = re.compile(r"\b(netflix|hbo|max\b|disney\+?|prime video|amazon|apple tv|movistar|filmin|skyshowtime|paramount\+?|peacock|hulu|streaming|plataforma|suscripci|subscription)", re.I)
+SERIES_RE = re.compile(r"\b(serie|series|temporada|season|episod|showrunner|renew|renuev|cancel|miniserie|tv show|sitcom)", re.I)
+FILM_RE = re.compile(r"\b(película|pelicula|film|movie|cine|taquilla|box office|director|oscar|festival|estreno en cines|trailer)", re.I)
 
 KEYWORDS = re.compile(
     r"\b(serie|series|temporada|season|episod|netflix|hbo|max|disney|prime video|apple tv|movistar|filmin|"
@@ -53,8 +68,8 @@ NS = {
     "dc": "http://purl.org/dc/elements/1.1/",
 }
 UA = "Mozilla/5.0 (compatible; TVDaily-news/1.0; +https://github.com/wilderwests/TVDaily)"
-PER_SOURCE = 25
-MAX_ITEMS = 400
+PER_SOURCE = 20
+MAX_ITEMS = 500
 
 
 def fetch(url):
@@ -111,8 +126,18 @@ def image_of(item):
     return first_img(text(item.find("content:encoded", NS)), text(item.find("description")))
 
 
+def classify(cat, text):
+    if cat != "mixto":
+        return cat
+    if PLATFORM_RE.search(text) and not FILM_RE.search(text):
+        return "plataformas"
+    if SERIES_RE.search(text):
+        return "series"
+    return "cine"
+
+
 def parse_feed(src):
-    sid, name, lang, url, filt = src
+    sid, name, lang, url, filt, cat = src
     try:
         root = ET.fromstring(fetch(url))
     except Exception as e:
@@ -144,6 +169,7 @@ def parse_feed(src):
             "source": sid,
             "sourceName": name,
             "lang": lang,
+            "cat": classify(cat, title + " " + summary),
             "date": date,
             "summary": summary,
             "image": img.replace("http://", "https://", 1) if img else "",
@@ -168,7 +194,7 @@ def main():
     active = {i["source"] for i in items}
     data = {
         "generatedAt": int(time.time()),
-        "sources": [{"id": s[0], "name": s[1], "lang": s[2]} for s in SOURCES if s[0] in active],
+        "sources": [{"id": s[0], "name": s[1], "lang": s[2], "cat": s[5]} for s in SOURCES if s[0] in active],
         "items": items,
     }
     out = Path(__file__).resolve().parent.parent / "data" / "news.json"
