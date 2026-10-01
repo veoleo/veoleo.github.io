@@ -9,6 +9,7 @@ import { TYPES, STATUS_COLORS, statusLabel, timeAgo, toMillis } from '../lib/uti
 import { renderMarkdown } from '../lib/markdown.js';
 import { sfx } from '../lib/sound.js';
 import { t } from '../lib/i18n.js';
+import { GuestGate, askSaveAccount } from './guest.js';
 import { burstAt, flash } from '../lib/fx.js';
 
 const MAX = 500;
@@ -46,7 +47,12 @@ export function EntryStrip({ en, href }) {
 }
 
 /* ── compositor ── */
-export function PostComposer({ preset = null, onPosted, autoFocus = false }) {
+export function PostComposer(props) {
+  const { user } = useStore();
+  if (user?.isAnonymous) return html`<${GuestGate} what="publicar" />`;
+  return html`<${Composer} ...${props} />`;
+}
+function Composer({ preset = null, onPosted, autoFocus = false }) {
   const { entries, profile } = useStore();
   const [text, setText] = useState('');
   const [entryId, setEntryId] = useState(preset?.id || '');
@@ -136,14 +142,14 @@ export function Replies({ post }) {
             onClick=${() => deleteReply(post.id, r.id).catch((x) => toast(x.message, 'err'))}><${Icon} name="trash" size=${13} /></button>`}</div>
         <div class="prose rtext" dangerouslySetInnerHTML=${{ __html: renderMarkdown(r.text, { strict: true }) }}></div>
       </div></div>`)}
-    <form class="reply" onSubmit=${send}>
+    ${user?.isAnonymous ? html`<${GuestGate} what="responder" />` : html`<form class="reply" onSubmit=${send}>
       <${Avatar} user=${profile} size=${32} />
       <div class="row" style="--g:10px;align-items:flex-end">
         <textarea class="input grow" rows="1" style="min-height:44px;resize:vertical" maxlength="999" placeholder="Responder…" value=${text}
           onInput=${(x) => setText(x.currentTarget.value)} onKeyDown=${(x) => { if (x.key === 'Enter' && !x.shiftKey) send(x); }}></textarea>
         <button class="btn sm" disabled=${busy || !text.trim()}>Enviar</button>
       </div>
-    </form>
+    </form>`}
   </div>`;
 }
 
@@ -159,6 +165,7 @@ export function PostCard({ p, liked = false, open = false, onDeleted }) {
   if (gone) return null;
   const mine = p.authorId === user?.uid;
   async function toggleLike(ev) {
+    if (user?.isAnonymous) { askSaveAccount(); return; }
     const el = ev.currentTarget; const next = !on;
     setOn(next); setN(n + (next ? 1 : -1));
     if (next) { sfx.pop(); burstAt(el, { count: 8, spread: 36 }); } else sfx.click();

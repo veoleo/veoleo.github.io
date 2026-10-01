@@ -293,7 +293,7 @@ export function Footer() {
     <div class="wrap">
       <div class="stack" style="--g:14px;max-width:460px">
         <a class="logo" href="#/"><i></i><span class="lt">Veoleo</span></a>
-        <p class="small muted" style="margin:0">Tu diario de series, películas, libros y audiolibros. Hecho con cariño y sin anuncios: si te gusta, puedes apoyarlo con un café.</p>
+        <p class="small muted" style="margin:0">Tu diario de series, películas, libros y audiolibros. <b style="color:var(--accent)">Gratis para siempre</b>, sin anuncios y hecho con cariño: si te gusta, puedes apoyarlo con un café.</p>
         <div class="row"><${SupportButton} /></div>
         <a class="contact" href=${`mailto:${CONTACT_EMAIL}?subject=Veoleo`} data-no-i18n><${Icon} name="mail" size=${15} /> ${CONTACT_EMAIL}</a>
       </div>

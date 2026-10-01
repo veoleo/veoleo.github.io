@@ -7,6 +7,7 @@ import { useStore, toast } from '../lib/store.js';
 import { timeAgo, toMillis } from '../lib/utils.js';
 import { sfx } from '../lib/sound.js';
 import { burstAt, flash } from '../lib/fx.js';
+import { GuestGate, askSaveAccount } from './guest.js';
 
 const TOOLS = [
   ['B', '**', '**', 'Negrita'], ['I', '_', '_', 'Cursiva'], ['H', '\n## ', '', 'Título'], ['“', '\n> ', '', 'Cita'],
@@ -90,6 +91,7 @@ export function LikeButton({ e }) {
   useEffect(() => { getLikes(e.id).then(setLikes); }, [e.id]);
   const liked = likes.includes(user?.uid);
   return html`<button class="btn ${liked ? 'on' : 'ghost'}" aria-pressed=${liked} onClick=${async (ev) => {
+    if (user?.isAnonymous) { askSaveAccount(); return; }
     const el = ev.currentTarget;
     const next = liked ? likes.filter((x) => x !== user.uid) : [...likes, user.uid];
     setLikes(next);
@@ -126,7 +128,7 @@ export function Comments({ e }) {
             <div class="prose" style="font-size:.98rem;margin-top:6px" dangerouslySetInnerHTML=${{ __html: renderMarkdown(c.text, { strict: true }) }}></div>
           </div>
         </div>`)}
-      <form class="comment" onSubmit=${send}>
+      ${user?.isAnonymous ? html`<${GuestGate} what="comentar" />` : html`<form class="comment" onSubmit=${send}>
         <${Avatar} user=${profile} size=${40} />
         <div class="row" style="--g:12px;align-items:flex-end">
           <textarea class="input grow" rows="2" style="min-height:52px;resize:vertical" placeholder="Escribe un comentario…" value=${text}
@@ -134,6 +136,6 @@ export function Comments({ e }) {
             onKeyDown=${(x) => { if (x.key === 'Enter' && (x.metaKey || x.ctrlKey)) send(x); }}></textarea>
           <button class="btn" disabled=${busy || !text.trim()}>Enviar</button>
         </div>
-      </form>
+      </form>`}
     </div>`;
 }
