@@ -11,7 +11,8 @@ import { watchEntry, updateEntry, deleteEntry, getNote } from '../lib/db.js';
 import { useStore, toast } from '../lib/store.js';
 import { enrich, deciderUrl, justwatchUrl, nextEpisodeOf, overviewFor } from '../lib/metadata.js';
 import { exportEntry, entryToMarkdown } from '../lib/markdown.js';
-import { TYPES, humanDate, fmtDuration } from '../lib/utils.js';
+import { TYPES, humanDate, fmtDuration, statusKeysFor, statusLabel, STATUS_COLORS, todayISO } from '../lib/utils.js';
+import { t as tr } from '../lib/i18n.js';
 import { sfx } from '../lib/sound.js';
 import { flash } from '../lib/fx.js';
 import { go } from '../lib/router.js';
@@ -70,6 +71,18 @@ export function ItemPage({ id }) {
   const c = e.consumption || {};
 
   async function rate(v) { try { await updateEntry(e.id, { rating: v }); } catch (x) { toast(x.message, 'err'); } }
+  // Cambio rápido de estado (Viendo → Abandonada, Vista…) sin abrir el formulario.
+  async function setStatus(k, el) {
+    if (k === e.status) return;
+    const patch = { status: k };
+    if (k === 'completed' && !e.finishedAt) { patch.finishedAt = todayISO(); patch.lastWatchedAt = e.lastWatchedAt || todayISO(); }
+    if (k === 'in_progress' && !e.startedAt) patch.startedAt = todayISO();
+    try {
+      await updateEntry(e.id, patch);
+      if (k === 'abandoned') { flash(tr(statusLabel(k, e.type)), '#8a8fa3'); sfx.close(); toast(tr('Movida a tu lista Abandonadas'), 'ok'); }
+      else { flash(tr(statusLabel(k, e.type)), '#c6ff3d'); sfx.pop(); }
+    } catch (x) { toast(x.message, 'err'); }
+  }
   async function doExport(copy) {
     const note = await getNote(e.id);
     if (copy) {
@@ -124,6 +137,8 @@ export function ItemPage({ id }) {
               <h1 class="hero-title"><${Scramble} text=${e.title} /></h1>
               ${e.originalTitle && html`<div class="sub">${e.originalTitle}</div>`}
               <${Stars} value=${e.rating || 0} onChange=${mine ? rate : null} size=${34} />
+              ${mine && html`<div class="status-pick" role="group" aria-label="Estado">${statusKeysFor(e.type).map((k) => html`<button key=${k}
+                class=${e.status === k ? 'on' : ''} style=${`--c:${STATUS_COLORS[k]}`} aria-pressed=${e.status === k} onClick=${(ev) => setStatus(k, ev.currentTarget)}>${statusLabel(k, e.type)}</button>`)}</div>`}
               <div class="row" style="--g:10px">
                 ${mine && html`<button class="btn" onClick=${() => setEdit(true)}><${Icon} name="edit" /> Editar</button>`}
                 ${mine && html`<button class="btn glass" onClick=${() => setPost(true)} title="Compartir en Comunidad"><${Icon} name="chat" /> Publicar</button>`}

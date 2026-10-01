@@ -66,7 +66,7 @@ export function DataPage() {
       }
       const h = { ...history }; fmt.split(' + ').forEach((f) => { h[f] = { at: Date.now(), n: created.length }; });
       setHistory(h); try { localStorage.setItem('tvd.imports', JSON.stringify(h)); } catch { /* sin storage */ }
-      setResult({ fmt, n: created.length, byType: Object.values(TYPES).map((t) => [t, created.filter((x) => x.type === t.key).length]).filter(([, n]) => n) });
+      setResult({ fmt, n: created.length, dated: parsed.datesUpdated || 0, byType: Object.values(TYPES).map((t) => [t, created.filter((x) => x.type === t.key).length]).filter(([, n]) => n) });
     } catch (e) {
       const perm = /permission|insufficient/i.test(e.message || '');
       toast(perm ? 'La sesión había caducado. Cierra sesión, vuelve a entrar e importa de nuevo: lo que ya se guardó no se duplicará.' : 'Falló la importación: ' + e.message, 'err', 9000);
@@ -96,6 +96,7 @@ export function DataPage() {
           <div class="stats">${counts.map(([t, n]) => html`<div class="stat" style=${`--c:${t.color}`}><b>${n}</b><span>${t.plural}</span></div>`)}
             ${eps > 0 && html`<div class="stat"><b>${eps}</b><span>Episodios vistos</span></div>`}</div>
           ${dups > 0 && html`<${Switch} checked=${skipDup} onChange=${setSkipDup} label=${`Saltar ${dups} que ya están en tu diario`} />`}
+          ${dups > 0 && html`<p class="small muted" style="margin:-12px 0 0">A las que ya tienes se les completan las fechas (empezado, último episodio visto y terminado) con las de este archivo.</p>`}
           <${Switch} checked=${enrichOn} onChange=${setEnrichOn} label="Completar portadas, episodios y estados automáticamente (recomendado)" />
           <div class="grid" style="--min:120px;gap:20px 14px">${parsed.items.slice(0, 12).map((e, i) => html`<${PosterCard} key=${i} e=${e} href="javascript:void 0" onClick=${(ev) => ev.preventDefault()} />`)}</div>
           <div class="row"><button class="btn lg" onClick=${doImport}><${Icon} name="upload" /> Importar ${skipDup ? parsed.items.length - dups : parsed.items.length}</button><button class="btn lg ghost" onClick=${() => setParsed(null)}>Cancelar</button></div>
@@ -104,7 +105,8 @@ export function DataPage() {
         ${result && html`<div class="panel" style="margin-bottom:40px">
           <div class="label" style="color:var(--accent)">Importación completada</div>
           <h3 class="h2" style="margin:12px 0 18px">${result.n} títulos de ${fmtName(result.fmt)}</h3>
-          <div class="row" style="--g:22px">${result.byType.map(([t, n]) => html`<span class="tag" style=${`--c:${t.color}`}>${n} ${t.plural}</span>`)}</div>
+          <div class="row" style="--g:22px">${result.byType.map(([t, n]) => html`<span class="tag" style=${`--c:${t.color}`}>${n} ${t.plural}</span>`)}
+            ${result.dated > 0 && html`<span class="tag" style="--c:var(--teal)">Fechas actualizadas en ${result.dated}</span>`}</div>
           <div class="row" style="margin-top:24px"><a class="btn" href="#/library">Ver biblioteca</a><button class="btn ghost" onClick=${() => pick('')}><${Icon} name="upload" /> Importar otro servicio</button></div>
         </div>`}
         <div class="src-tiles">${IMPORT_HELP.map((h) => html`<div class="src-tile" key=${h.id} style=${`--c:${SRC_C[h.id] || 'var(--accent)'}`}>

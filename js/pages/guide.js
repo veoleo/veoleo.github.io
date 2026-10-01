@@ -1,5 +1,5 @@
 // Guía TV: tus próximos episodios y la programación del día por plataforma, como la parrilla de siempre.
-import { DEFAULT_REGION } from '../lib/i18n.js';
+import { DEFAULT_REGION, t } from '../lib/i18n.js';
 import { html, useState, useMemo } from 'preact-standalone';
 import { useAsync, Tabs, Chip, Spinner, Cover, Icon, Scramble, SectionHead } from '../components/ui.js';
 import { PreviewModal } from '../components/preview.js';
@@ -52,6 +52,12 @@ function MySeries() {
     catch (e) { toast(e.message, 'err'); }
   }
 
+  async function abandon(x) {
+    if (!confirm(t(`¿Abandonar ${x.e.title}? Pasará a tu lista Abandonadas y dejará de salir aquí.`))) return;
+    try { await updateEntry(x.e.id, { status: 'abandoned' }); sfx.close(); toast(t('Movida a tu lista Abandonadas'), 'ok'); }
+    catch (e) { toast(e.message, 'err'); }
+  }
+
   if (!upcoming.length && !pending.length) {
     return html`<div class="empty" style="padding-top:20px"><h2 class="h1">Nada en el horizonte</h2>
       <p class="lead" style="margin-top:16px">Cuando sigas series en emisión (Viendo, Al día o Must watch) verás aquí sus próximos episodios y los que te faltan por ver.</p>
@@ -63,12 +69,15 @@ function MySeries() {
 
     ${pending.filter(f).length > 0 && html`<section style="margin-bottom:72px">
       <${SectionHead} kicker="Ya emitidos" title="Te faltan por ver" color="var(--yellow)"><span class="count">${pending.filter(f).length}</span></${SectionHead}>
-      ${pending.filter(f).map((x) => html`<${EpRow} key=${x.e.id + x.code} x=${x} action=${html`<label class="check" title="Marcar visto"><input type="checkbox" onChange=${(ev) => markSeen(x, ev)} aria-label="Marcar visto" /></label>`} />`)}
+      ${pending.filter(f).map((x) => html`<${EpRow} key=${x.e.id + x.code} x=${x} action=${html`<span class="row" style="--g:6px;flex-wrap:nowrap">
+        <button class="btn icon text" title="Abandonar serie" aria-label="Abandonar serie" onClick=${() => abandon(x)}><${Icon} name="close" size=${15} /></button>
+        <label class="check" title="Marcar visto"><input type="checkbox" onChange=${(ev) => markSeen(x, ev)} aria-label="Marcar visto" /></label></span>`} />`)}
     </section>`}
 
     ${[...groups.entries()].map(([d, items]) => html`<section key=${d} style="margin-bottom:48px">
       <div class="label" style=${`margin-bottom:6px;color:${d === todayISO() ? 'var(--accent)' : 'var(--muted)'}`}>${dayLabel(d)}</div>
-      ${items.map((x) => html`<${EpRow} key=${x.e.id + x.code} x=${x} />`)}
+      ${items.map((x) => html`<${EpRow} key=${x.e.id + x.code} x=${x} action=${html`<span class="row" style="--g:10px;flex-wrap:nowrap"><span class="count">${x.airdate.slice(8, 10)}/${x.airdate.slice(5, 7)}</span>
+        <button class="btn icon text" title="Abandonar serie" aria-label="Abandonar serie" onClick=${() => abandon(x)}><${Icon} name="close" size=${15} /></button></span>`} />`)}
     </section>`)}
   </div>`;
 }
