@@ -934,3 +934,9 @@ a.stat:hover::before { width: 100%; }
   .pstrip .bg img { transform: none; transition: none; }
   * { will-change: auto !important; }
 }
+
+@media (max-width: 900px), (pointer: coarse) {
+  .marquee { display: none; }
+  .hero .bg img[style*="blur"] { filter: none !important; opacity: .35; transform: none !important; }
+  .carousel { content-visibility: auto; contain-intrinsic-size: auto 380px; }
+}
