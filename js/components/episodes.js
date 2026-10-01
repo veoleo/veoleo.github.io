@@ -41,6 +41,7 @@ export function EpisodesPanel({ e, mine }) {
     const list = [...next].sort();
     const all = seasons.flatMap((s) => s.episodes);
     const patch = { watchedEpisodes: list, episodes: total, watchedMinutes: all.filter((ep) => next.has(ep.code)).reduce((a, ep) => a + (ep.runtime || e.runtime || 0), 0) };
+    if (list.length > (e.watchedEpisodes || []).length) patch.lastWatchedAt = today;
     const info = await showInfo(e).catch(() => null);
     const basis = info || { aired, upcoming: all.filter((ep) => ep.airdate && ep.airdate > today), ended: /ended|cancel/i.test(e.showStatus || '') };
     const status = seriesStatusFor(e, basis, list);
