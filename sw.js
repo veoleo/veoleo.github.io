@@ -1,5 +1,5 @@
 // Service worker: la app funciona instalada y abre aunque la red falle.
-const CACHE = 'veoleo-v3';
+const CACHE = 'veoleo-v4';
 const SHELL = ['./', './index.html', './css/app.css', './js/main.js', './assets/icon.svg', './manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
@@ -13,6 +13,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
+  if (sameOrigin && url.pathname.startsWith('/__/')) return; // inicio de sesión de Firebase: siempre de la red
   const isStatic = /fonts\.(googleapis|gstatic)\.com|unpkg\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|gstatic\.com\/firebasejs/.test(url.host + url.pathname);
   if (!sameOrigin && !isStatic) return;
   // Red primero (siempre lo último publicado), caché como respaldo.
