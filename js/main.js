@@ -143,6 +143,7 @@ const MORE = [
 ];
 function MoreSheet({ onClose }) {
   const { user } = useStore();
+  const [snd, setSnd] = useState(isSoundOn());
   useEffect(() => {
     sfx.open();
     const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
@@ -154,6 +155,7 @@ function MoreSheet({ onClose }) {
     <div class="more-in">
       <div class="row between" style="margin-bottom:8px"><span class="kicker">Secciones</span>
         <div class="row" style="--g:8px"><${LangToggle} /><button class="btn icon glass" aria-label="Cerrar" onClick=${onClose}><${Icon} name="close" /></button></div></div>
+      <button class="more-link" onClick=${() => { const v = !snd; setSound(v); setSnd(v); }}><${Icon} name=${snd ? 'sound' : 'mute'} /><span>${snd ? 'Sonido activado' : 'Sonido silenciado'}</span><em class="more-sw ${snd ? 'on' : ''}"></em></button>
       <a class="more-link" href=${`#/u/${user.uid}`} onClick=${onClose}><${Icon} name="user" /><span>Mi perfil</span></a>
       ${MORE.map(([path, label, icon]) => html`<a key=${path} class="more-link" href=${'#/' + path} onClick=${onClose}><${Icon} name=${icon} /><span>${label}</span></a>`)}
       ${SUPPORT_URL && html`<a class="more-link coffee-link" href=${SUPPORT_URL} target="_blank" rel="noopener"><${Icon} name="coffee" /><span>Invítame a un café</span></a>`}
