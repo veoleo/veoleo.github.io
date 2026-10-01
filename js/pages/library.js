@@ -58,6 +58,7 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
           <span class="label">Afinar</span>
           <select class="select" value=${f.year} onChange=${(e) => set({ year: e.currentTarget.value })}>
             <option value="">Todos los años</option>${years.map((y) => html`<option value=${y}>${y}</option>`)}
+            ${base.some((e) => e.status !== 'planned' && !entryYear(e)) && html`<option value="unknown">Otros años</option>`}
           </select>
           <select class="select" value=${f.genre} onChange=${(e) => set({ genre: e.currentTarget.value })}>
             <option value="">Todos los géneros</option>${genres.map((g) => html`<option>${g}</option>`)}

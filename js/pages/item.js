@@ -9,7 +9,8 @@ import { NoteEditor, LikeButton, Comments } from '../components/social.js';
 import { EntryForm } from '../components/entry-form.js';
 import { watchEntry, updateEntry, deleteEntry, getNote } from '../lib/db.js';
 import { useStore, toast } from '../lib/store.js';
-import { enrich, deciderUrl, justwatchUrl, nextEpisodeOf, overviewFor } from '../lib/metadata.js';
+import { enrich, deciderUrl, justwatchUrl, nextEpisodeOf, overviewFor, allAiredPatch } from '../lib/metadata.js';
+import { YearPicker, yearChoiceOf, yearPatch, CUR_YEAR } from '../components/yearpick.js';
 import { exportEntry, entryToMarkdown } from '../lib/markdown.js';
 import { TYPES, humanDate, fmtDuration, statusKeysFor, statusLabel, STATUS_COLORS, todayISO } from '../lib/utils.js';
 import { t as tr } from '../lib/i18n.js';
@@ -71,13 +72,22 @@ export function ItemPage({ id }) {
   const c = e.consumption || {};
 
   async function rate(v) { try { await updateEntry(e.id, { rating: v }); } catch (x) { toast(x.message, 'err'); } }
+  async function setYear(choice) {
+    try { await updateEntry(e.id, yearPatch(choice, e.finishedAt)); sfx.pop(); toast(choice === 'unknown' ? tr('Movida a «Otros años»') : tr('Año actualizado'), 'ok'); }
+    catch (x) { toast(x.message, 'err'); }
+  }
   // Cambio rápido de estado (Viendo → Abandonada, Vista…) sin abrir el formulario.
   async function setStatus(k, el) {
     if (k === e.status) return;
     const patch = { status: k };
-    if (k === 'completed' && !e.finishedAt) { patch.finishedAt = todayISO(); patch.lastWatchedAt = e.lastWatchedAt || todayISO(); }
+    if (k === 'completed' && !e.finishedAt && !e.watchedYear && !e.yearUnknown) { patch.finishedAt = todayISO(); patch.lastWatchedAt = e.lastWatchedAt || todayISO(); }
     if (k === 'in_progress' && !e.startedAt) patch.startedAt = todayISO();
     try {
+      // «Al día» o «Vista» en una serie: se marcan todas las temporadas y episodios ya emitidos.
+      if (e.type === 'series' && (k === 'up_to_date' || k === 'completed')) {
+        const all = await allAiredPatch(e).catch(() => null);
+        if (all) { Object.assign(patch, all); if (all.watchedEpisodes.length > (e.watchedEpisodes || []).length) patch.lastWatchedAt = todayISO(); }
+      }
       await updateEntry(e.id, patch);
       if (k === 'abandoned') { flash(tr(statusLabel(k, e.type)), '#8a8fa3'); sfx.close(); toast(tr('Movida a tu lista Abandonadas'), 'ok'); }
       else { flash(tr(statusLabel(k, e.type)), '#c6ff3d'); sfx.pop(); }
@@ -139,6 +149,10 @@ export function ItemPage({ id }) {
               <${Stars} value=${e.rating || 0} onChange=${mine ? rate : null} size=${34} />
               ${mine && html`<div class="status-pick" role="group" aria-label="Estado">${statusKeysFor(e.type).map((k) => html`<button key=${k}
                 class=${e.status === k ? 'on' : ''} style=${`--c:${STATUS_COLORS[k]}`} aria-pressed=${e.status === k} onClick=${(ev) => setStatus(k, ev.currentTarget)}>${statusLabel(k, e.type)}</button>`)}</div>`}
+              ${mine && ['completed', 'up_to_date', 'abandoned'].includes(e.status) && html`<div class="row" style="--g:10px;align-items:center">
+                <span class="label">${yearChoiceOf(e) === 'unknown' ? 'En «Otros años»' : `Año · ${yearChoiceOf(e) === 'this' ? CUR_YEAR : yearChoiceOf(e)}`}</span>
+                ${yearChoiceOf(e) === 'this' && html`<button class="btn sm ghost" onClick=${() => setYear('unknown')}>Quitar de ${CUR_YEAR}</button>`}
+                <${YearPicker} compact value=${yearChoiceOf(e)} onChange=${setYear} /></div>`}
               <div class="row" style="--g:10px">
                 ${mine && html`<button class="btn" onClick=${() => setEdit(true)}><${Icon} name="edit" /> Editar</button>`}
                 ${mine && html`<button class="btn glass" onClick=${() => setPost(true)} title="Compartir en Comunidad"><${Icon} name="chat" /> Publicar</button>`}
