@@ -1,0 +1,31 @@
+/* TVDaily · snippet para Obsidian */
+.tvdaily {
+  --tvd-ink: #16141f; --tvd-paper: #fff8ec; --tvd-red: #f2545b; --tvd-yellow: #f9c846;
+  --tvd-teal: #2bb3a3; --tvd-blue: #3b6cf6; --tvd-pink: #ee7ba8; --tvd-purple: #8e6cef;
+}
+.tvdaily .inline-title, .tvdaily h1 {
+  font-family: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  font-weight: 800; font-size: 2.6em; letter-spacing: -0.02em; line-height: 1.02;
+}
+.tvdaily h2 { font-weight: 800; border-bottom: 3px solid var(--tvd-ink); padding-bottom: .15em; }
+.theme-dark .tvdaily h2 { border-color: currentColor; }
+.tvdaily img[alt="portada"] {
+  float: right; margin: 0 0 1em 1.2em; border: 3px solid var(--tvd-ink); border-radius: 12px;
+  box-shadow: 6px 6px 0 var(--tvd-ink); transform: rotate(1.5deg);
+}
+.tvdaily .callout {
+  border: 3px solid var(--tvd-ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--tvd-ink);
+  mix-blend-mode: normal;
+}
+.callout[data-callout="tvdaily-rating"] { --callout-color: 249, 200, 70; --callout-icon: lucide-star; background: rgb(249 200 70 / .25); }
+.callout[data-callout="tvdaily-rating"] .callout-title-inner { font-size: 1.5em; letter-spacing: .08em; }
+.callout[data-callout="tvdaily-music"] { --callout-color: 238, 123, 168; --callout-icon: lucide-music; }
+.callout[data-callout="tvdaily-season"] { --callout-color: 59, 108, 246; --callout-icon: lucide-tv; }
+.tvdaily .callout[data-callout="abstract"] { --callout-color: 43, 179, 163; }
+.tvdaily .callout[data-callout="info"] { --callout-color: 142, 108, 239; }
+.tvdaily table { border: 2px solid var(--tvd-ink); border-radius: 10px; overflow: hidden; }
+.tvdaily .task-list-item-checkbox:checked { background-color: var(--tvd-teal); border-color: var(--tvd-ink); }
+.tvdaily-series h1 { color: var(--tvd-blue); }
+.tvdaily-movie h1 { color: var(--tvd-red); }
+.tvdaily-book h1 { color: #d9a400; }
+.tvdaily-audiobook h1 { color: var(--tvd-teal); }
