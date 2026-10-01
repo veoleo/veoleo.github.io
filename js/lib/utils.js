@@ -204,11 +204,14 @@ export function img(url, w = 360) {
   if (!url) return '';
   const u = String(url);
   // TVMaze ya sirve tamaño póster: sin pasar por el redimensionador (más fiable en móvil).
-  if (/static\.tvmaze\.com\/uploads\/images\//.test(u)) return w <= 400 ? u.replace(/\/(original_untouched|large_landscape|medium_portrait)\//, '/medium_portrait/') : u;
+  if (/static\.tvmaze\.com\/uploads\/images\//.test(u) && w <= 400 && !/large_landscape/.test(u)) return u.replace(/\/(original_untouched|medium_portrait)\//, '/medium_portrait/');
   if (/m\.media-amazon\.com/.test(u)) return u.replace(/\._V1_.*\.(jpg|png)$/, `._V1_SX${w}.jpg`);
   if (/mzstatic\.com/.test(u)) return u.replace(/\/(\d+)x(\d+)bb\.(jpg|png)$/, (m, a, b) => `/${w}x${Math.round((w * b) / a)}bb.jpg`);
   if (/image\.tmdb\.org/.test(u)) return u.replace(/\/t\/p\/(w\d+|original)\//, `/t/p/${w <= 185 ? 'w185' : w <= 342 ? 'w342' : w <= 500 ? 'w500' : w <= 780 ? 'w780' : 'w1280'}/`);
   if (/books\.google/.test(u)) return u.replace(/&fife=w\d+/, '') + `&fife=w${w}`;
+  // Wikimedia: miniatura del tamaño pedido en lugar del original (pueden ser fotos de 20 MP).
+  const wm = u.match(/^https?:\/\/upload\.wikimedia\.org\/wikipedia\/(\w+)\/(?!thumb\/)(\w)\/(\w\w)\/([^/?#]+)$/);
+  if (wm && !/\.svg$/i.test(wm[4])) return `https://upload.wikimedia.org/wikipedia/${wm[1]}/thumb/${wm[2]}/${wm[3]}/${wm[4]}/${w}px-${wm[4]}`;
   if (/covers\.openlibrary\.org/.test(u)) return w <= 200 ? u.replace(/-L\.jpg/, '-M.jpg') : u;
   if (/^https?:\/\//.test(u) && !/ytimg\.com|wikimedia/.test(u)) {
     return `https://images.weserv.nl/?url=${encodeURIComponent(u.replace(/^https?:\/\//, ''))}&w=${w}&output=webp&q=80&we`;

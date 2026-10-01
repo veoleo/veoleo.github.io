@@ -560,16 +560,25 @@ function tvmazeCard(s, extra = {}) {
   };
 }
 
-async function tvmazePremieres(daysBack = 7, daysFwd = 10) {
+// Estrenos de la semana. Se procesa cada día al llegar (sin acumular los JSON enteros) y en el móvil se piden menos días:
+// cada día de TVMaze son ~300 KB y descargarlos todos a la vez agotaba la memoria del iPhone.
+const LOW_MEM = typeof matchMedia === 'function' && matchMedia('(max-width: 900px), (pointer: coarse)').matches;
+async function tvmazePremieres(daysBack = LOW_MEM ? 3 : 7, daysFwd = LOW_MEM ? 5 : 10) {
   const today = new Date().toISOString().slice(0, 10);
   const days = [];
   for (let i = -daysBack; i <= daysFwd; i++) days.push(new Date(Date.now() + i * 864e5).toISOString().slice(0, 10));
-  const lists = await Promise.all(days.map((d) => getJSON(`https://api.tvmaze.com/schedule/web?date=${d}`, { noCache: true }).catch(() => [])));
   const seen = new Set(); const out = [];
-  for (const ep of lists.flat()) {
-    const s = ep._embedded?.show; if (!s || ep.number !== 1 || seen.has(s.id)) continue;
-    seen.add(s.id);
-    out.push(tvmazeCard(s, { releaseDate: ep.airdate, premiereLabel: ep.season === 1 ? 'Nueva serie' : `Temporada ${ep.season}`, upcoming: ep.airdate > today }));
+  const take = (list) => {
+    for (const ep of list || []) {
+      const s = ep._embedded?.show; if (!s || ep.number !== 1 || seen.has(s.id)) continue;
+      seen.add(s.id);
+      out.push(tvmazeCard(s, { releaseDate: ep.airdate, premiereLabel: ep.season === 1 ? 'Nueva serie' : `Temporada ${ep.season}`, upcoming: ep.airdate > today }));
+    }
+  };
+  const step = LOW_MEM ? 2 : 4;
+  for (let i = 0; i < days.length; i += step) {
+    const lists = await Promise.all(days.slice(i, i + step).map((d) => getJSON(`https://api.tvmaze.com/schedule/web?date=${d}`, { noCache: true }).catch(() => [])));
+    lists.forEach(take);
   }
   return out;
 }

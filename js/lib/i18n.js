@@ -303,6 +303,7 @@ const EN = {
 };
 
 const PATTERNS = [
+  [/^Ver las (\d+)$/, 'See all $1'],
   [/^¿Abandonar (.+)\? Pasará a tu lista Abandonadas y dejará de salir aquí\.$/, 'Drop $1? It will move to your Dropped list and stop showing here.'],
   [/^Fechas actualizadas en (\d+)$/, 'Dates updated on $1'],
   [/^(\d+) en Excel$/, '$1 in Excel'],
