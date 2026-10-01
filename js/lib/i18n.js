@@ -325,6 +325,10 @@ const EN = {
   'La imagen empieza con la misma vista que tienes en el grafo.': 'The image starts with the same view you have in the graph.',
   'Arrastra y amplía la vista previa': 'Drag and zoom the preview', '(rueda o pellizco) para encuadrar justo lo que quieres compartir.': '(scroll or pinch) to frame exactly what you want to share.',
 
+  'Seleccionar': 'Select', 'Terminar selección': 'Done selecting', 'Ninguno': 'None', 'Año…': 'Year…', 'Privacidad…': 'Privacy…', 'actualizados': 'updated', 'Eliminados': 'Deleted',
+  'Episodios vistos': 'Episodes watched', 'Solo 1 episodio': 'Only 1 episode', '1–2 episodios': '1–2 episodes', 'Hasta 5 episodios': 'Up to 5 episodes',
+  'Cualquier origen': 'Any source', 'Importados': 'Imported', 'Añadidos a mano': 'Added manually', 'Series con pocos episodios vistos: útil para limpiar importaciones': 'Series with few episodes watched: handy for cleaning up imports',
+
   // géneros
   'Acción': 'Action', 'Acción y aventura': 'Action & adventure', 'Aventura': 'Adventure', 'Animación': 'Animation', 'Anime': 'Anime', 'Biografía': 'Biography', 'Comedia': 'Comedy',
   'Crimen': 'Crime', 'Documental': 'Documentary', 'Drama': 'Drama', 'Familia': 'Family', 'Fantasía': 'Fantasy', 'Historia': 'History', 'Terror': 'Horror', 'Musical': 'Musical',
@@ -336,6 +340,9 @@ const EN = {
 };
 
 const PATTERNS = [
+  [/^(\d+) seleccionados?$/, (m, n) => `${n} selected`], [/^Seleccionar todo \((\d+)\)$/, 'Select all ($1)'],
+  [/^¿Eliminar (\d+) títulos de tu diario\? Se borran también sus notas\. No se puede deshacer\.$/, 'Delete $1 titles from your diary? Their notes are deleted too. This cannot be undone.'],
+  [/^(\d+) actualizados$/, '$1 updated'],
   [/^(\d+) portadas? encontradas?$/, (m, n) => `${n} cover${n === '1' ? '' : 's'} found`],
   [/^Este año · (\d{4})$/, 'This year · $1'], [/^Año · (\d{4})$/, 'Year · $1'], [/^Quitar de (\d{4})$/, 'Remove from $1'],
   [/^Ver las (\d+)$/, 'See all $1'],

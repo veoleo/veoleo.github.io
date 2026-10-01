@@ -542,3 +542,36 @@ export async function setAllVisibility(visibility, entries) {
   }
   return list.length;
 }
+
+// Cambios en bloque (selección múltiple de la biblioteca). patchFor(e) devuelve los cambios de cada entrada.
+export async function bulkUpdateEntries(list, patchFor) {
+  const uid = uidOrThrow();
+  let n = 0;
+  for (let i = 0; i < list.length; i += 200) {
+    const b = writeBatch(db);
+    for (const e of list.slice(i, i + 200)) {
+      const p = patchFor(e); if (!p) continue;
+      b.update(doc(db, 'entries', e.id), clean({ ...p, updatedAt: serverTimestamp() }));
+      if (p.visibility === 'private' && e.hasNote) b.set(doc(db, 'notes', e.id), { ownerId: uid, isPublic: false, updatedAt: serverTimestamp() }, { merge: true });
+      n++;
+    }
+    await b.commit();
+  }
+  return n;
+}
+export async function bulkDeleteEntries(list) {
+  const uid = uidOrThrow();
+  const ids = new Set(list.map((e) => e.id));
+  for (let i = 0; i < list.length; i += 200) {
+    const b = writeBatch(db);
+    for (const e of list.slice(i, i + 200)) {
+      if (e.hasNote) b.delete(doc(db, 'notes', e.id));
+      b.delete(doc(db, 'entries', e.id));
+    }
+    await b.commit();
+  }
+  for (const l of getState().lists.filter((l) => l.ownerId === uid && (l.itemIds || []).some((x) => ids.has(x)))) {
+    await updateDoc(doc(db, 'lists', l.id), { itemIds: l.itemIds.filter((x) => !ids.has(x)) }).catch(() => {});
+  }
+  return list.length;
+}

@@ -770,6 +770,8 @@ export function showInfo(e) {
 export function seriesStatusFor(e, info, watchedList = e.watchedEpisodes || []) {
   // Nunca tocamos lo abandonado ni lo que se marcó como visto a mano sin episodios.
   if (!info || e.status === 'abandoned') return e.status;
+  // Pendiente puesto a mano (p. ej. en bloque): no se vuelve a «Viendo» aunque tenga episodios marcados.
+  if (e.status === 'planned' && e.statusManual) return 'planned';
   const watched = new Set(watchedList);
   if (!watched.size) return e.status;
   const allAired = info.aired.length > 0 && info.aired.every((x) => watched.has(x.code));
