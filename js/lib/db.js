@@ -2,7 +2,7 @@
 import { initializeApp } from 'firebase/app';
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  GoogleAuthProvider, signInWithPopup, signOut, updateProfile as updateAuthProfile, sendPasswordResetEmail,
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, updateProfile as updateAuthProfile, sendPasswordResetEmail,
 } from 'firebase/auth';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
@@ -38,7 +38,17 @@ export async function registerEmail(name, email, pass) {
   if (name) await updateAuthProfile(cred.user, { displayName: name });
   return cred;
 }
-export const loginGoogle = () => signInWithPopup(auth, new GoogleAuthProvider());
+// Popup en navegador; redirección si es la app instalada o el popup está bloqueado.
+export async function loginGoogle() {
+  const provider = new GoogleAuthProvider();
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone;
+  if (standalone) return signInWithRedirect(auth, provider);
+  try { return await signInWithPopup(auth, provider); }
+  catch (e) {
+    if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/web-storage-unsupported'].includes(e?.code)) return signInWithRedirect(auth, provider);
+    throw e;
+  }
+}
 export const logout = () => signOut(auth);
 export const resetPassword = (email) => sendPasswordResetEmail(auth, email);
 
@@ -132,6 +142,26 @@ export async function saveSettings(patch) {
   const uid = uidOrThrow();
   await setDoc(doc(db, 'users', uid, 'private', 'settings'), patch, { merge: true });
   setState({ settings: { ...getState().settings, ...patch } });
+}
+
+/* ───────────── Noticias guardadas (privadas) ───────────── */
+
+export async function loadSavedNews(uid) {
+  try {
+    const s = await getDoc(doc(db, 'users', uid, 'private', 'news'));
+    return s.exists() ? s.data().items || [] : [];
+  } catch { return []; }
+}
+export async function toggleSavedNews(n) {
+  const uid = uidOrThrow();
+  const cur = getState().savedNews || [];
+  const has = cur.some((x) => x.id === n.id);
+  const items = has ? cur.filter((x) => x.id !== n.id)
+    : [{ id: n.id, title: n.title, link: n.link, image: n.image || '', sourceName: n.sourceName, lang: n.lang, cat: n.cat || '', date: n.date, summary: (n.summary || '').slice(0, 300), savedAt: Date.now() }, ...cur].slice(0, 300);
+  setState({ savedNews: items });
+  try { await setDoc(doc(db, 'users', uid, 'private', 'news'), { items }); }
+  catch (e) { setState({ savedNews: cur }); throw e; }
+  return !has;
 }
 
 /* ───────────── Suscripciones en vivo ───────────── */

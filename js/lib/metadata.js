@@ -10,14 +10,29 @@ import { SHARED_TMDB_KEY } from '../config.js';
 
 const cache = new Map();
 async function getJSON(url, opts = {}) {
-  const k = url + (opts.headers ? JSON.stringify(opts.headers) : '');
-  if (cache.has(k)) return cache.get(k);
-  const p = fetch(url, opts).then((r) => {
+  const { noCache, ...fetchOpts } = opts;
+  const k = url + (fetchOpts.headers ? JSON.stringify(fetchOpts.headers) : '');
+  if (!noCache && cache.has(k)) return cache.get(k);
+  const p = fetch(url, fetchOpts).then((r) => {
     if (!r.ok) throw new Error(`HTTP ${r.status} · ${new URL(url).host}`);
     return r.json();
   });
+  if (noCache) return p;
   cache.set(k, p);
+  // Caché acotada: en móviles la memoria es limitada.
+  if (cache.size > 200) cache.delete(cache.keys().next().value);
   p.catch(() => cache.delete(k));
+  return p;
+}
+
+// Memoriza resultados ya procesados durante un tiempo (no las respuestas en bruto).
+const memo = new Map();
+export async function memoize(key, ttlMs, fn) {
+  const hit = memo.get(key);
+  if (hit && Date.now() - hit.t < ttlMs) return hit.p;
+  const p = fn();
+  memo.set(key, { t: Date.now(), p });
+  p.catch(() => memo.delete(key));
   return p;
 }
 const yearOf = (d) => (d ? Number(String(d).slice(0, 4)) || null : null);
@@ -99,7 +114,7 @@ async function tvmazeSearch(q) {
     source: 'tvmaze', sourceId: String(s.id), type: 'series',
     title: s.name, year: yearOf(s.premiered), releaseDate: s.premiered || '',
     cover: https(s.image?.medium || s.image?.original || ''),
-    overview: stripHtml(s.summary), imdbId: s.externals?.imdb || '', tvmazeId: String(s.id),
+    overview: stripHtml(s.summary), imdbId: s.externals?.imdb || '', tvmazeId: String(s.id), tvdbId: s.externals?.thetvdb ? String(s.externals.thetvdb) : '',
     network: s.network?.name || s.webChannel?.name || '',
   }));
 }
@@ -127,7 +142,7 @@ async function tvmazeDetails(id) {
     language: s.language || '',
     imdbId: s.externals?.imdb || '',
     externalUrl: s.url, homepage: s.officialSite || '',
-    showStatus: s.status, tvmazeId: String(id),
+    showStatus: s.status, tvmazeId: String(id), tvdbId: s.externals?.thetvdb ? String(s.externals.thetvdb) : '',
     releaseDate: s.premiered || '', lastAirDate: s.ended || '',
   };
 }
@@ -452,7 +467,7 @@ export function toEntryFields(d) {
     releaseDate: d.releaseDate || '', lastAirDate: d.lastAirDate || '', showStatus: d.showStatus || '',
     nextEpisode: d.nextEpisode || null, providers: d.providers || null,
     source: { name: d.source || 'manual', id: d.sourceId || '' },
-    ids: { tmdb: d.tmdbId || (d.source === 'tmdb' ? d.sourceId : '') || '', tvmaze: d.tvmazeId || (d.source === 'tvmaze' ? d.sourceId : '') || '', imdb: d.imdbId || '', itunes: d.itunesId || (d.source === 'itunes' ? d.sourceId : '') || '' },
+    ids: { tmdb: d.tmdbId || (d.source === 'tmdb' ? d.sourceId : '') || '', tvmaze: d.tvmazeId || (d.source === 'tvmaze' ? d.sourceId : '') || '', imdb: d.imdbId || '', itunes: d.itunesId || (d.source === 'itunes' ? d.sourceId : '') || '', tvdb: d.tvdbId || '' },
   };
 }
 
@@ -543,11 +558,11 @@ function tvmazeCard(s, extra = {}) {
   };
 }
 
-async function tvmazePremieres(daysBack = 12, daysFwd = 14) {
+async function tvmazePremieres(daysBack = 7, daysFwd = 10) {
   const today = new Date().toISOString().slice(0, 10);
   const days = [];
   for (let i = -daysBack; i <= daysFwd; i++) days.push(new Date(Date.now() + i * 864e5).toISOString().slice(0, 10));
-  const lists = await Promise.all(days.map((d) => getJSON(`https://api.tvmaze.com/schedule/web?date=${d}`).catch(() => [])));
+  const lists = await Promise.all(days.map((d) => getJSON(`https://api.tvmaze.com/schedule/web?date=${d}`, { noCache: true }).catch(() => [])));
   const seen = new Set(); const out = [];
   for (const ep of lists.flat()) {
     const s = ep._embedded?.show; if (!s || ep.number !== 1 || seen.has(s.id)) continue;
@@ -564,12 +579,16 @@ const sameStreamer = (a = '', b = '') => {
   return n(a) === n(b) || n(a).startsWith(n(b)) || n(b).startsWith(n(a));
 };
 
-export async function discoverSections(settings = {}, { provider = '' } = {}) {
+export function discoverSections(settings = {}, { provider = '' } = {}) {
+  return memoize(`disc|${provider}|${settings.region || 'ES'}`, 20 * 60000, () => discoverSectionsRaw(settings, { provider }));
+}
+async function discoverSectionsRaw(settings = {}, { provider = '' } = {}) {
   const key = tmdbKey(settings);
   const country = (settings.region || 'ES').toLowerCase();
   const safe = (p) => p.catch((e) => { console.warn('[TVDaily] novedades', e.message); return []; });
   const [prem, movies, audio, books] = await Promise.all([
-    safe(tvmazePremieres()), safe(appleTop('movie', country)), safe(appleTop('audiobook', country, 30)), safe(appleTop('book', country, 30)),
+    safe(memoize('prem', 30 * 60000, () => tvmazePremieres())), safe(memoize(`top-movie-${country}`, 60 * 60000, () => appleTop('movie', country))),
+    safe(memoize(`top-audio-${country}`, 60 * 60000, () => appleTop('audiobook', country, 30))), safe(memoize(`top-book-${country}`, 60 * 60000, () => appleTop('book', country, 30))),
   ]);
   const byProv = (x) => !provider || sameStreamer(x.network, provider);
   const byWeight = (a, b) => b.weight - a.weight;
@@ -649,9 +668,12 @@ export function trailerSearchUrl(e) {
 
 export const epCode = (s, n) => `S${String(s).padStart(2, '0')}E${String(n).padStart(2, '0')}`;
 
-async function tvmazeIdFor(e) {
+export async function tvmazeIdFor(e) {
   if (e.ids?.tvmaze) return e.ids.tvmaze;
   if (e.source?.name === 'tvmaze') return e.source.id;
+  if (e.ids?.tvdb) {
+    try { const s = await getJSON(`https://api.tvmaze.com/lookup/shows?thetvdb=${e.ids.tvdb}`); return String(s.id); } catch { /* sigue */ }
+  }
   const imdb = e.ids?.imdb || e.imdbId;
   if (imdb) {
     try { const s = await getJSON(`https://api.tvmaze.com/lookup/shows?imdb=${imdb}`); return String(s.id); } catch { /* no está */ }
@@ -705,4 +727,63 @@ export async function getSeasons(e, settings = {}) {
   }
   return [...by.values()].filter((s) => s.episodes.length).sort((a, b) => a.season - b.season)
     .map((s) => ({ ...s, name: /^Temporada|^Season/.test(s.name) || !s.name ? `Temporada ${s.season}` : s.name }));
+}
+
+/* ───────────── Emisión: estado de la serie, episodios emitidos y próximos ───────────── */
+
+const ENDED = /ended|canceled|cancelled/i;
+
+// Información de emisión de una serie (TVMaze), procesada y memorizada 30 min.
+export function showInfo(e) {
+  return memoize(`info|${e.id || e.title}`, 30 * 60000, async () => {
+    const id = await tvmazeIdFor(e);
+    if (!id) return null;
+    const s = await getJSON(`https://api.tvmaze.com/shows/${id}?embed[]=episodes`, { noCache: true });
+    const today = new Date().toISOString().slice(0, 10);
+    const eps = (s._embedded?.episodes || []).filter((x) => x.number).map((x) => ({
+      code: epCode(x.season, x.number), season: x.season, number: x.number, name: x.name,
+      airdate: x.airdate || '', airtime: x.airtime || '', runtime: x.runtime || s.averageRuntime || null, image: https(x.image?.medium || ''),
+    }));
+    const aired = eps.filter((x) => x.airdate && x.airdate <= today);
+    const upcoming = eps.filter((x) => x.airdate && x.airdate > today).sort((a, b) => a.airdate.localeCompare(b.airdate));
+    return {
+      tvmazeId: String(id), tvdbId: s.externals?.thetvdb ? String(s.externals.thetvdb) : '', imdbId: s.externals?.imdb || '',
+      status: s.status || '', ended: ENDED.test(s.status || ''), network: s.webChannel?.name || s.network?.name || '',
+      cover: https(s.image?.original || ''), total: eps.length, aired, upcoming, episodes: eps,
+      next: upcoming[0] ? { code: upcoming[0].code, name: upcoming[0].name, airdate: upcoming[0].airdate } : null,
+    };
+  });
+}
+
+// Estado que le corresponde a una serie según lo visto y su emisión.
+export function seriesStatusFor(e, info, watchedList = e.watchedEpisodes || []) {
+  // Nunca tocamos lo abandonado ni lo que se marcó como visto a mano sin episodios.
+  if (!info || e.status === 'abandoned') return e.status;
+  const watched = new Set(watchedList);
+  if (!watched.size) return e.status;
+  const allAired = info.aired.length > 0 && info.aired.every((x) => watched.has(x.code));
+  if (allAired) return info.ended && !info.upcoming.length ? 'completed' : 'up_to_date';
+  if (e.status === 'completed') return 'completed';
+  return 'in_progress';
+}
+
+// Programación de un día: streaming global + TV de un país, ya simplificada.
+export function scheduleFor(date, country = 'ES') {
+  return memoize(`sched|${date}|${country}`, 30 * 60000, async () => {
+    const [web, tv] = await Promise.all([
+      getJSON(`https://api.tvmaze.com/schedule/web?date=${date}`, { noCache: true }).catch(() => []),
+      getJSON(`https://api.tvmaze.com/schedule?country=${country}&date=${date}`, { noCache: true }).catch(() => []),
+    ]);
+    const seen = new Set();
+    return [...web, ...tv].map((ep) => {
+      const sh = ep._embedded?.show || ep.show; if (!sh) return null;
+      const k = `${sh.id}|${ep.season}|${ep.number}`; if (seen.has(k)) return null; seen.add(k);
+      return {
+        showId: String(sh.id), title: sh.name, cover: https(sh.image?.medium || ''), platform: sh.webChannel?.name || sh.network?.name || 'Otros',
+        code: ep.number ? epCode(ep.season, ep.number) : 'ESP', name: ep.name, airtime: ep.airtime || '', runtime: ep.runtime || null,
+        premiere: ep.number === 1, newShow: ep.number === 1 && ep.season === 1, language: sh.language || '', genres: normGenres(sh.genres),
+        weight: sh.weight || 0, imdbId: sh.externals?.imdb || '', year: yearOf(sh.premiered),
+      };
+    }).filter(Boolean);
+  });
 }

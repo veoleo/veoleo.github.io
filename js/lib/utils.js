@@ -8,15 +8,19 @@ export const TYPES = {
 };
 export const TYPE_KEYS = Object.keys(TYPES);
 
-export const STATUS_KEYS = ['completed', 'in_progress', 'planned', 'abandoned'];
+export const STATUS_KEYS = ['completed', 'up_to_date', 'in_progress', 'planned', 'abandoned'];
+// Estados disponibles por tipo ("Al día" sólo tiene sentido en series).
+export const statusKeysFor = (type) => STATUS_KEYS.filter((s) => s !== 'up_to_date' || type === 'series' || !type);
 
 const STATUS_LABELS = {
   completed: { series: 'Vista', movie: 'Vista', book: 'Leído', audiobook: 'Escuchado', any: 'Completado' },
+  up_to_date: { series: 'Al día', movie: 'Al día', book: 'Al día', audiobook: 'Al día', any: 'Al día' },
   in_progress: { series: 'Viendo', movie: 'Viendo', book: 'Leyendo', audiobook: 'Escuchando', any: 'En curso' },
   planned: { series: 'Must watch', movie: 'Must watch', book: 'Por leer', audiobook: 'Por escuchar', any: 'Pendiente' },
   abandoned: { series: 'Abandonada', movie: 'Abandonada', book: 'Abandonado', audiobook: 'Abandonado', any: 'Abandonado' },
 };
-export const STATUS_ICONS = { completed: '✓', in_progress: '◐', planned: '✦', abandoned: '✕' };
+export const STATUS_ICONS = { completed: '✓', up_to_date: '⟳', in_progress: '◐', planned: '✦', abandoned: '✕' };
+export const STATUS_COLORS = { completed: 'var(--teal)', up_to_date: 'var(--blue)', in_progress: 'var(--yellow)', planned: 'var(--pink)', abandoned: 'var(--muted)' };
 export const statusLabel = (status, type = 'any') => STATUS_LABELS[status]?.[type] || STATUS_LABELS[status]?.any || status;
 
 export const PLATFORMS = ['Netflix', 'HBO Max', 'Disney+', 'Prime Video', 'Apple TV+', 'Movistar Plus+', 'Filmin', 'SkyShowtime', 'Atresplayer', 'RTVE Play', 'Crunchyroll', 'Cine', 'TV', 'Otro'];
@@ -193,4 +197,19 @@ export function loadScript(src) {
     const s = document.createElement('script');
     s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s);
   });
+}
+
+// Devuelve una versión reducida de una imagen remota (menos memoria y datos, clave en iPhone).
+export function img(url, w = 360) {
+  if (!url) return '';
+  const u = String(url);
+  if (/m\.media-amazon\.com/.test(u)) return u.replace(/\._V1_.*\.(jpg|png)$/, `._V1_SX${w}.jpg`);
+  if (/mzstatic\.com/.test(u)) return u.replace(/\/(\d+)x(\d+)bb\.(jpg|png)$/, (m, a, b) => `/${w}x${Math.round((w * b) / a)}bb.jpg`);
+  if (/image\.tmdb\.org/.test(u)) return u.replace(/\/t\/p\/(w\d+|original)\//, `/t/p/${w <= 185 ? 'w185' : w <= 342 ? 'w342' : w <= 500 ? 'w500' : w <= 780 ? 'w780' : 'w1280'}/`);
+  if (/books\.google/.test(u)) return u.replace(/&fife=w\d+/, '') + `&fife=w${w}`;
+  if (/covers\.openlibrary\.org/.test(u)) return w <= 200 ? u.replace(/-L\.jpg/, '-M.jpg') : u;
+  if (/^https?:\/\//.test(u) && !/ytimg\.com|wikimedia/.test(u)) {
+    return `https://images.weserv.nl/?url=${encodeURIComponent(u.replace(/^https?:\/\//, ''))}&w=${w}&output=webp&q=80&we`;
+  }
+  return u;
 }

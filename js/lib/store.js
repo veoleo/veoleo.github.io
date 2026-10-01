@@ -10,6 +10,7 @@ const state = {
   entriesReady: false,
   lists: [],         // listas propias (en vivo)
   following: [],     // uids que sigo
+  savedNews: [],     // noticias guardadas
   toasts: [],
 };
 const subs = new Set();

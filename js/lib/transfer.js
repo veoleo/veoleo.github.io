@@ -1,6 +1,6 @@
 // Importación y exportación de datos: TV Time, Letterboxd, Goodreads, IMDb, copias TVDaily, CSV.
 import { download, loadScript, normGenres, todayISO, uniq } from './utils.js';
-import { epCode, searchMedia } from './metadata.js';
+import { epCode, searchMedia, showInfo, seriesStatusFor } from './metadata.js';
 import { getNotesBulk, importEntries, saveNote, updateEntry } from './db.js';
 
 /* ───────────── CSV ───────────── */
@@ -93,6 +93,7 @@ function detect(rows, filename = '') {
   const h = Object.keys(rows[0] || {}).map((x) => x.toLowerCase());
   const has = (...k) => k.every((x) => h.includes(x));
   if (has('letterboxd uri')) return 'letterboxd';
+  if ((h.length <= 3 && has('title', 'date')) || /netflixviewinghistory|viewingactivity/i.test(filename)) return 'netflix';
   if (has('exclusive shelf') || (has('title', 'author') && h.includes('my rating'))) return 'goodreads';
   if (has('const', 'your rating') || has('const', 'title type')) return 'imdb';
   if (h.some((x) => /tv_show_name|series_name|show_name|episode_season_number|movie_name/.test(x)) || /tvtime|tv-time|tracking|seen_episode|followed/i.test(filename)) return 'tvtime';
@@ -178,6 +179,49 @@ function fromTVTime(fileRows) {
   return [...out, ...movies.values()];
 }
 
+// Netflix: «Título: Temporada 2: Nombre del episodio» + fecha. Agrupa por serie y cuenta episodios por temporada.
+const SEASON_RE = /^(temporada|season|parte|part|volumen|volume|libro|book|capítulo|chapter|serie limitada|limited series|miniserie|miniseries|colección|collection)\b\s*(\d+)?/i;
+function netflixDate(s) {
+  const m = String(s).match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
+  if (!m) return isoDate(s);
+  let [, a, b, y] = m; a = +a; b = +b; y = +y; if (y < 100) y += 2000;
+  const [d, mo] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]; // ambiguo → día/mes (formato español)
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+function fromNetflix(rows) {
+  const shows = new Map(); const movies = new Map();
+  for (const r of rows) {
+    const title = r.Title || r.title || r.Título || '';
+    const date = netflixDate(r.Date || r.date || r.Fecha || '');
+    if (!title) continue;
+    const parts = title.split(': ');
+    const si = parts.findIndex((p, i) => i > 0 && SEASON_RE.test(p));
+    if (si > 0) {
+      const name = parts.slice(0, si).join(': ');
+      const m = parts[si].match(SEASON_RE);
+      const season = m && m[2] ? Number(m[2]) : 1;
+      const s = shows.get(name) || base('series', name, { status: 'in_progress', platform: 'Netflix', _nf: {}, _dates: [] });
+      const ep = parts.slice(si + 1).join(': ') || parts[si];
+      (s._nf[season] = s._nf[season] || new Set()).add(ep);
+      if (date) s._dates.push(date);
+      shows.set(name, s);
+    } else {
+      const mv = movies.get(title) || base('movie', title, { status: 'completed', platform: 'Netflix', finishedAt: date });
+      if (date && (!mv.finishedAt || date > mv.finishedAt)) mv.finishedAt = date;
+      movies.set(title, mv);
+    }
+  }
+  const out = [];
+  for (const s of shows.values()) {
+    const ds = s._dates.sort();
+    s.startedAt = ds[0] || ''; s.finishedAt = '';
+    s._nfSeasons = Object.fromEntries(Object.entries(s._nf).map(([k, v]) => [k, v.size]));
+    delete s._nf; delete s._dates;
+    out.push(s);
+  }
+  return [...out, ...movies.values()];
+}
+
 async function readZip(file) {
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
   const zip = await window.JSZip.loadAsync(file);
@@ -209,11 +253,12 @@ export async function parseImport(files) {
   if (tv.length) items.push(...fromTVTime(tv));
   csvs.forEach((c, i) => {
     if (formats[i] === 'letterboxd') items.push(...fromLetterboxd(c.rows, c.name));
+    if (formats[i] === 'netflix') items.push(...fromNetflix(c.rows));
     if (formats[i] === 'goodreads') items.push(...fromGoodreads(c.rows));
     if (formats[i] === 'imdb') items.push(...fromIMDb(c.rows));
   });
   const fmt = uniq(formats.filter(Boolean));
-  if (!items.length) throw new Error('Formato no reconocido. Admite exportaciones de TV Time, Letterboxd, Goodreads, IMDb y copias de TVDaily.');
+  if (!items.length) throw new Error('Formato no reconocido. Admite exportaciones de TV Time, Netflix, Letterboxd, Goodreads, IMDb y copias de TVDaily.');
   // Fusiona duplicados (p. ej. diary.csv + ratings.csv de Letterboxd).
   const merged = new Map();
   for (const it of items) {
@@ -230,7 +275,7 @@ export async function runImport(parsed, existing, { skipDuplicates = true } = {}
   const key = (e) => `${e.type}|${String(e.title).toLowerCase()}|${e.year || ''}`;
   const have = new Set(existing.map(key));
   const todo = parsed.items.filter((e) => !skipDuplicates || !have.has(key(e)));
-  const clean = todo.map(({ id, _oldId, _note, _tvdb, ownerId, ownerName, ownerHandle, ownerPhoto, createdAt, updatedAt, ...rest }) => rest);
+  const clean = todo.map(({ id, _oldId, _note, _tvdb, _nfSeasons, ownerId, ownerName, ownerHandle, ownerPhoto, createdAt, updatedAt, ...rest }) => rest);
   onProgress('Guardando', 0, clean.length);
   const ids = await importEntries(clean);
   for (let i = 0; i < todo.length; i++) {
@@ -243,18 +288,19 @@ export async function runImport(parsed, existing, { skipDuplicates = true } = {}
 
 // Completa portada, ids y géneros de lo importado buscando cada título.
 export async function autoEnrich(items, settings, onProgress = () => {}) {
-  const queue = items.filter((e) => !e.cover);
+  const queue = items.filter((e) => !e.cover || e.type === 'series');
+  const total = queue.length;
   let done = 0;
   await Promise.all(Array.from({ length: 3 }, async () => {
     while (queue.length) {
       const e = queue.shift();
       try {
         let hit = null;
-        if (e.type === 'series' && e.ids?.tvdb) {
+        if (e.cover) { /* ya tiene ficha: sólo sincronizar episodios */ } else if (e.type === 'series' && e.ids?.tvdb) {
           const r = await fetch(`https://api.tvmaze.com/lookup/shows?thetvdb=${e.ids.tvdb}`);
           if (r.ok) { const s = await r.json(); hit = { cover: s.image?.original || s.image?.medium || '', tvmazeId: String(s.id), imdbId: s.externals?.imdb || '', year: s.premiered ? Number(s.premiered.slice(0, 4)) : null, genres: normGenres(s.genres), network: s.webChannel?.name || s.network?.name || '' }; }
         }
-        if (!hit) {
+        if (!hit && !e.cover) {
           const res = await searchMedia(e.type, e.title, settings);
           hit = res.find((x) => !e.year || !x.year || Math.abs(x.year - e.year) <= 1) || res[0];
         }
@@ -267,15 +313,61 @@ export async function autoEnrich(items, settings, onProgress = () => {}) {
           };
           if (hit.source && hit.sourceId) patch.source = { name: hit.source, id: hit.sourceId };
           await updateEntry(e.id, patch);
+          Object.assign(e, patch);
         }
+        if (e.type === 'series') await syncImportedSeries(e);
       } catch (x) { console.warn('[TVDaily] enriquecer', e.title, x.message); }
-      onProgress(++done, items.filter((x) => !x.cover).length);
+      onProgress(++done, total);
     }
   }));
 }
 
+// Tras importar una serie: episodios de Netflix (primeros N de cada temporada), total, estado y próximo episodio.
+async function syncImportedSeries(e) {
+  const info = await showInfo(e).catch(() => null);
+  if (!info) return;
+  let watched = e.watchedEpisodes || [];
+  if (e._nfSeasons) {
+    const set = new Set(watched);
+    for (const [season, n] of Object.entries(e._nfSeasons)) {
+      info.episodes.filter((x) => x.season === Number(season)).slice(0, n).forEach((x) => set.add(x.code));
+    }
+    watched = [...set].sort();
+  }
+  const patch = { watchedEpisodes: watched, episodes: info.total, showStatus: info.status, nextEpisode: info.next || null,
+    ids: { ...(e.ids || {}), tvmaze: info.tvmazeId, tvdb: e.ids?.tvdb || info.tvdbId || '', imdb: e.ids?.imdb || info.imdbId || '' } };
+  if (!e.cover && info.cover) patch.cover = info.cover;
+  const status = seriesStatusFor({ ...e, watchedEpisodes: watched }, info, watched);
+  if (status !== e.status) { patch.status = status; if (status === 'completed' && !e.finishedAt) patch.finishedAt = e.startedAt || ''; }
+  await updateEntry(e.id, patch);
+}
+
+// Exportación en el formato de la descarga de datos de TV Time (para quien mueve su historial entre apps).
+export async function exportTVTime(entries, filename = 'TVDaily-formato-TVTime.zip') {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  const zip = new window.JSZip();
+  const seen = [], followed = [], movies = [];
+  for (const e of entries.filter((x) => x.type === 'series')) {
+    const tvdb = e.ids?.tvdb || '';
+    followed.push({ tv_show_id: tvdb, tv_show_name: e.title, created_at: e.startedAt || '', status: e.status === 'abandoned' ? 'stopped' : e.status === 'completed' ? 'ended' : 'watching', imdb_id: e.ids?.imdb || e.imdbId || '' });
+    for (const code of e.watchedEpisodes || []) {
+      const m = code.match(/^S(\d+)E(\d+)$/); if (!m) continue;
+      seen.push({ tv_show_id: tvdb, tv_show_name: e.title, episode_season_number: Number(m[1]), episode_number: Number(m[2]), created_at: e.finishedAt || e.startedAt || '' });
+    }
+  }
+  for (const e of entries.filter((x) => x.type === 'movie')) {
+    movies.push({ movie_name: e.title, year: e.year || '', imdb_id: e.ids?.imdb || e.imdbId || '', watched_at: e.status === 'completed' ? e.finishedAt || '' : '', status: e.status === 'planned' ? 'watchlist' : e.status === 'completed' ? 'watched' : e.status, rating: e.rating || '' });
+  }
+  zip.file('seen_episode.csv', '\uFEFF' + toCSV(seen));
+  zip.file('followed_tv_show.csv', '\uFEFF' + toCSV(followed));
+  zip.file('tracking-prod-records-movies.csv', '\uFEFF' + toCSV(movies));
+  zip.file('LEEME.txt', 'Exportado desde TVDaily con la misma estructura que la descarga de datos de TV Time\n(seen_episode.csv, followed_tv_show.csv). tv_show_id es el identificador de TheTVDB.\n');
+  download(filename, await zip.generateAsync({ type: 'blob' }), 'application/zip');
+}
+
 export const IMPORT_HELP = [
   { id: 'tvtime', name: 'TV Time', how: 'Pide tus datos en tvtime.com → Ajustes → «Solicitar mis datos» (GDPR). Recibirás un ZIP: súbelo tal cual o sus CSV.' },
+  { id: 'netflix', name: 'Netflix', how: 'netflix.com → Cuenta → Perfiles → tu perfil → «Actividad de visionado» → «Descargar todo». Sube NetflixViewingHistory.csv.' },
   { id: 'letterboxd', name: 'Letterboxd', how: 'letterboxd.com → Settings → Import & Export → Export your data. Sube el ZIP o diary.csv / ratings.csv / watchlist.csv.' },
   { id: 'goodreads', name: 'Goodreads', how: 'goodreads.com → My Books → Import and export → Export Library. Sube goodreads_library_export.csv.' },
   { id: 'imdb', name: 'IMDb', how: 'imdb.com → Your ratings / Watchlist → Export. Sube el CSV.' },
