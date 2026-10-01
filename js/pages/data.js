@@ -1,5 +1,6 @@
 // Datos: importar historial (TV Time, Netflix, Letterboxd, Goodreads, IMDb, Veoleo) y exportar en varios formatos.
-import { html, useState, useRef } from 'preact-standalone';
+import { html, useState, useRef, useEffect } from 'preact-standalone';
+import { parseHash } from '../lib/router.js';
 import { Icon, Switch, SectionHead, Scramble, PosterCard } from '../components/ui.js';
 import { ExportModal } from './library.js';
 import { useStore, toast } from '../lib/store.js';
@@ -44,6 +45,11 @@ export function DataPage() {
     finally { setXProg(null); }
   }
   const fileRef = useRef();
+  // Desde el menú de arriba: #/data?go=import | export
+  useEffect(() => {
+    const go = parseHash().query.go;
+    if (go) setTimeout(() => document.getElementById(go === 'export' ? 'exportar' : 'importar')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+  }, [location.hash]);
 
   async function onFiles(files) {
     if (!files?.length) return;
@@ -84,7 +90,7 @@ export function DataPage() {
     <div class="page-head"><div><div class="kicker">Importar · Exportar · Copias</div><h1 class="display" style="margin-top:20px"><${Scramble} text="Tus datos" /></h1></div></div>
     <input ref=${fileRef} type="file" multiple accept=".csv,.json,.zip" style="display:none" onChange=${(e) => onFiles(e.currentTarget.files)} />
 
-    <section>
+    <section id="importar" style="scroll-margin-top:100px">
       <${SectionHead} kicker="Importar" title="Trae tu historial">${!busy && !parsed && html`<button class="btn" onClick=${() => pick('')}><${Icon} name="upload" /> Elegir archivos</button>`}</${SectionHead}>
 
       ${busy ? html`<div class="stack" style="--g:18px;padding:40px 0">
@@ -125,7 +131,7 @@ export function DataPage() {
       `}
     </section>
 
-    <section class="section">
+    <section class="section" id="exportar" style="scroll-margin-top:100px">
       <${SectionHead} kicker="Exportar" title="Llévatelo" color="var(--teal)"><span class="count">${entries.length} ENTRADAS · ${lists.length} LISTAS</span></${SectionHead}>
       <div class="src-tiles">
         <div class="src-tile wide" style="--c:#21a366"><h3><${Icon} name="grid" size=${20} /> Excel con portadas</h3>
