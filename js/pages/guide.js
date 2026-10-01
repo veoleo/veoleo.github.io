@@ -4,7 +4,7 @@ import { html, useState, useMemo } from 'preact-standalone';
 import { useAsync, Tabs, Chip, Spinner, Cover, Icon, Scramble, SectionHead } from '../components/ui.js';
 import { PreviewModal } from '../components/preview.js';
 import { useStore, toast } from '../lib/store.js';
-import { scheduleFor, showInfo, seriesStatusFor } from '../lib/metadata.js';
+import { scheduleFor, showInfo, seriesStatusFor, MAIN_PLATFORMS } from '../lib/metadata.js';
 import { myEpisodes } from '../lib/sync.js';
 import { updateEntry } from '../lib/db.js';
 import { todayISO, uniq } from '../lib/utils.js';
@@ -104,8 +104,14 @@ function Schedule() {
   const items = (st.data || []).filter((x) => (!onlyMine || isMine(x)) && (!onlyPrem || x.premiere) && (!langs || LANGS.test(x.language) || isMine(x)));
   const byPlat = new Map();
   for (const x of items) { if (!byPlat.has(x.platform)) byPlat.set(x.platform, []); byPlat.get(x.platform).push(x); }
-  const allPlats = [...byPlat.entries()].sort((a, b) => b[1].reduce((s, x) => s + x.weight, 0) - a[1].reduce((s, x) => s + x.weight, 0)).map(([p]) => p);
+  const weightOf = (p) => byPlat.get(p).reduce((s, x) => s + x.weight, 0);
+  // Orden de la parrilla: plataformas principales, luego canales de TV del país y el resto.
+  const main = MAIN_PLATFORMS.filter((p) => byPlat.has(p));
+  const channels = [...byPlat.keys()].filter((p) => !MAIN_PLATFORMS.includes(p) && byPlat.get(p).some((x) => x.broadcast)).sort((a, b) => weightOf(b) - weightOf(a));
+  const others = [...byPlat.keys()].filter((p) => !MAIN_PLATFORMS.includes(p) && !channels.includes(p)).sort((a, b) => weightOf(b) - weightOf(a));
+  const allPlats = [...main, ...channels, ...others];
   const shown = allPlats.filter((p) => !plats.length || plats.includes(p));
+  const togglePlat = (p) => { setPlats(plats.includes(p) ? plats.filter((x) => x !== p) : [...plats, p]); sfx.click(); };
 
   return html`<div>
     <div class="tabs" style="border-bottom:0;margin-bottom:20px">${days.map((d, i) => {
@@ -122,13 +128,19 @@ function Schedule() {
           ${[['ES', 'TV España'], ['US', 'TV EE. UU.'], ['GB', 'TV Reino Unido'], ['MX', 'TV México'], ['AR', 'TV Argentina']].map(([v, l]) => html`<option value=${v}>${l}</option>`)}
         </select>
       </div>
-      ${allPlats.length > 1 && html`<div class="filter-row"><span class="label">Canal</span>
-        <${Chip} on=${!plats.length} onClick=${() => setPlats([])}>Todos</${Chip}>
-        ${allPlats.slice(0, 24).map((p) => html`<${Chip} key=${p} on=${plats.includes(p)} color="var(--blue)" fg="#fff" onClick=${() => setPlats(plats.includes(p) ? plats.filter((x) => x !== p) : [...plats, p])}>${p}</${Chip}>`)}
+      <div class="filter-row"><span class="label">Plataformas</span>
+        <${Chip} on=${!plats.length} onClick=${() => setPlats([])}>Todas</${Chip}>
+        ${MAIN_PLATFORMS.map((p) => html`<span key=${p} class=${byPlat.has(p) ? '' : 'chip-off'}><${Chip} on=${plats.includes(p)} color="var(--blue)" fg="#fff" onClick=${() => togglePlat(p)}>${p} <span class="n">${byPlat.get(p)?.length || 0}</span></${Chip}></span>`)}
+      </div>
+      ${channels.length > 0 && html`<div class="filter-row"><span class="label">Canales de TV</span>
+        ${channels.map((p) => html`<${Chip} key=${p} on=${plats.includes(p)} color="var(--teal)" onClick=${() => togglePlat(p)}>${p} <span class="n">${byPlat.get(p).length}</span></${Chip}>`)}
       </div>`}
+      ${others.length > 0 && html`<details class="filter-row"><summary class="label" style="cursor:pointer">Otras plataformas (${others.length})</summary>
+        <div class="row" style="--g:8px;margin-top:10px">${others.map((p) => html`<${Chip} key=${p} on=${plats.includes(p)} color="var(--purple)" fg="#fff" onClick=${() => togglePlat(p)}>${p} <span class="n">${byPlat.get(p).length}</span></${Chip}>`)}</div>
+      </details>`}
     </div>
 
-    ${st.loading ? html`<${Spinner} />` : !shown.length ? html`<p class="lead">No hay emisiones con esos filtros.</p>` : html`
+    ${st.loading ? html`<${Spinner} />` : !shown.length ? html`<p class="lead">${plats.length ? `Hoy no hay estrenos de episodios en ${plats.join(', ')}. Prueba otro día o quita filtros.` : 'No hay emisiones con esos filtros.'}</p>` : html`
       <div class="guide">${shown.map((p) => html`<div class="tvrow" key=${p}>
         <div class="ch"><b>${p}</b><span class="count">${byPlat.get(p).length} EMISIONES</span></div>
         <div class="progs">${byPlat.get(p).sort((a, b) => (a.airtime || '99').localeCompare(b.airtime || '99') || b.weight - a.weight).slice(0, 30).map((x) => html`

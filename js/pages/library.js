@@ -8,6 +8,7 @@ import { platformsOf } from '../lib/metadata.js';
 import { getNotesBulk } from '../lib/db.js';
 import { bulkExportZip, bulkExportSingle } from '../lib/markdown.js';
 import { exportJSON, exportCSV } from '../lib/transfer.js';
+import { exportExcel } from '../lib/excel.js';
 import { sfx } from '../lib/sound.js';
 import { flash } from '../lib/fx.js';
 
@@ -98,6 +99,7 @@ export function ExportModal({ entries, name, settings, lists = [], onClose, auto
       if (kind === 'goodreads') { exportCSV(entries.filter((e) => e.type === 'book' || e.type === 'audiobook'), `${name}-goodreads.csv`, 'goodreads'); done(); return; }
       setProg([0, entries.length]);
       const notes = await getNotesBulk(entries.map((e) => e.id));
+      if (kind === 'xlsx') { await exportExcel(entries, notes, { name, onProgress: (d, t) => setProg([d, t]) }); done(); return; }
       const ids = new Set(entries.map((e) => e.id));
       const listsWithItems = lists.filter((l) => l.kind !== 'smart').map((l) => ({ ...l, items: entries.filter((e) => (l.itemIds || []).includes(e.id)) }))
         .filter((l) => l.items.length && l.items.every((e) => ids.has(e.id)));
@@ -117,6 +119,7 @@ export function ExportModal({ entries, name, settings, lists = [], onClose, auto
         <span class="count">${prog[0]} / ${prog[1]} · INCLUYE EPISODIOS CON SINOPSIS</span></div>`
     : html`<div class="stack" style="--g:0">
         <${Opt} k="zip" t="Bóveda de Obsidian (.zip)" d="Una nota por título en carpetas por tipo, con portada, valoración, episodios y tu nota. Índice con Dataview, listas y snippet CSS." />
+        <${Opt} k="xlsx" t="Excel con portadas (.xlsx)" d="Una hoja por tipo con portada, estado, estrellas, fechas, progreso y tus notas, más un resumen." />
         <${Opt} k="single" t="Un único Markdown" d="Todas las notas en un solo archivo .md." />
         <${Opt} k="csv" t="Hoja de cálculo (CSV)" d="Título, tipo, estado, valoración, fechas, plataforma y más." />
         <${Opt} k="letterboxd" t="CSV para Letterboxd" d="Tus películas en el formato de importación de Letterboxd." />

@@ -1,6 +1,7 @@
 // Ficha de una entrada: héroe, estrellas, episodios, nota, tráiler, banda sonora, reparto y comentarios.
 import { html, useState, useEffect } from 'preact-standalone';
 import { ComposerModal } from '../components/posts.js';
+import { ShareCardModal } from '../components/sharecard.js';
 import { Stars, Cover, BgImg, TypeBadge, StatusBadge, Providers, Avatar, Spinner, Modal, Icon, Scramble, shareLink } from '../components/ui.js';
 import { Trailer, Soundtrack, CastRow, AudioPreview } from '../components/media.js';
 import { EpisodesPanel } from '../components/episodes.js';
@@ -26,6 +27,7 @@ export function ItemPage({ id }) {
   const [refreshing, setRefreshing] = useState(false);
   const [sec, setSec] = useState('resumen');
   const [post, setPost] = useState(false);
+  const [card, setCard] = useState(false);
 
   useEffect(() => {
     if (own) return;
@@ -126,7 +128,8 @@ export function ItemPage({ id }) {
                 ${mine && html`<button class="btn" onClick=${() => setEdit(true)}><${Icon} name="edit" /> Editar</button>`}
                 ${mine && html`<button class="btn glass" onClick=${() => setPost(true)} title="Compartir en Comunidad"><${Icon} name="chat" /> Publicar</button>`}
                 <${LikeButton} e=${e} />
-                <button class="btn glass" onClick=${share} title="Compartir"><${Icon} name="share" /> Compartir</button>
+                <button class="btn glass" onClick=${() => setCard(true)} title="Tarjeta para Instagram"><${Icon} name="image" /> Tarjeta</button>
+                <button class="btn icon glass" onClick=${share} title="Compartir enlace" aria-label="Compartir enlace"><${Icon} name="share" /></button>
                 <button class="btn glass" onClick=${() => doExport(false)} title="Exportar a Markdown"><${Icon} name="download" /> .md</button>
                 <button class="btn icon glass" onClick=${() => doExport(true)} title="Copiar Markdown" aria-label="Copiar Markdown"><${Icon} name="copy" /></button>
                 ${mine && html`<button class="btn icon glass" disabled=${refreshing} onClick=${refresh} title="Actualizar datos" aria-label="Actualizar datos"><${Icon} name="refresh" /></button>`}
@@ -225,6 +228,7 @@ export function ItemPage({ id }) {
 
       ${edit && html`<${EntryForm} draft=${e} onClose=${() => setEdit(false)} />`}
       ${post && html`<${ComposerModal} entry=${e} onClose=${() => setPost(false)} />`}
+      ${card && html`<${ShareCardModal} e=${e} onClose=${() => setCard(false)} />`}
       ${confirmDel && html`<${Modal} kicker="Eliminar" title=${e.title} color="var(--red)" width=${560} onClose=${() => setConfirmDel(false)}>
         <p class="lead" style="margin-top:0">Se borrará de tu diario junto con su nota. No se puede deshacer.</p>
         <div class="row between" style="margin-top:28px"><button class="btn ghost" onClick=${() => setConfirmDel(false)}>Cancelar</button>
