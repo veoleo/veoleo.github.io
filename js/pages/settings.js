@@ -1,6 +1,6 @@
 // Ajustes: perfil, preferencias, plantilla Markdown para Obsidian y cuenta.
 import { html, useState, useMemo } from 'preact-standalone';
-import { Avatar, Switch, Tabs, Icon, SectionHead, Scramble } from '../components/ui.js';
+import { Avatar, Switch, Tabs, Icon, SectionHead, Scramble, SupportButton } from '../components/ui.js';
 import { useStore, toast } from '../lib/store.js';
 import { updateMyProfile, changeHandle, saveSettings, logout } from '../lib/db.js';
 import { DEFAULT_TEMPLATE, PLACEHOLDERS, renderTemplate, entryContext, renderMarkdown, OBSIDIAN_CSS, filenameFor } from '../lib/markdown.js';
@@ -125,6 +125,7 @@ export function SettingsPage() {
           <dt>Acceso</dt><dd>${(user.providerData || []).map((x) => (x.providerId === 'google.com' ? 'Google' : 'Email y contraseña')).join(', ') || '—'}</dd>
           <dt>Usuario</dt><dd>@${profile?.handle}</dd>
         </dl>
+        <div class="panel" style="--c:#ffdd00;max-width:640px"><h3 class="h3">¿Te gusta TVDaily?</h3><p class="muted" style="margin:0 0 18px">Es gratis y sin anuncios. Si quieres apoyarlo, invítame a un café.</p><${SupportButton} /></div>
         <div class="row"><a class="btn ghost" href="#/data"><${Icon} name="database" /> Importar y exportar datos</a><button class="btn danger" onClick=${() => { sfx.close(); logout(); }}><${Icon} name="logout" /> Cerrar sesión</button></div>
       </div>`}
     </div>
