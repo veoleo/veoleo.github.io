@@ -16,3 +16,6 @@ export const SHARED_TMDB_KEY = '';
 
 // Página de apoyo (Buy Me a Coffee).
 export const SUPPORT_URL = 'https://buymeacoffee.com/mariawildet';
+
+// Contacto (sugerencias, errores, colaboraciones).
+export const CONTACT_EMAIL = 'mariawilderwest@gmail.com';

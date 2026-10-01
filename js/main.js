@@ -1,4 +1,5 @@
 // Punto de entrada: auth, shell, navegación, paleta de comandos e intro.
+import { LANG, startDomTranslation } from './lib/i18n.js';
 import { html, render, useState, useEffect, useRef, Component } from 'preact-standalone';
 import { useStore, setState, toast } from './lib/store.js';
 import { onAuth, ensureProfile, loadSettings, watchMine, logout, loadSavedNews } from './lib/db.js';
@@ -6,7 +7,7 @@ import { reconcileSeries, resetReconcile } from './lib/sync.js';
 import { useRoute, go } from './lib/router.js';
 import { sfx, unlockAudio, isSoundOn, setSound } from './lib/sound.js';
 import { observeReveal, trackCursor } from './lib/fx.js';
-import { Avatar, Toasts, Icon, Cover, Footer, SupportButton } from './components/ui.js';
+import { Avatar, Toasts, Icon, Cover, Footer, SupportButton, LangToggle } from './components/ui.js';
 import { SUPPORT_URL } from './config.js';
 import { TYPES, statusLabel } from './lib/utils.js';
 import { AuthPage } from './pages/auth.js';
@@ -17,7 +18,8 @@ import { LibraryPage } from './pages/library.js';
 import { ItemPage } from './pages/item.js';
 import { ListsPage, ListPage } from './pages/lists.js';
 import { ChallengesPage } from './pages/challenges.js';
-import { ExplorePage, ProfilePage } from './pages/social.js';
+import { ExplorePage, ProfilePage, PostPage } from './pages/social.js';
+import { AboutPage } from './pages/about.js';
 import { SettingsPage } from './pages/settings.js';
 import { NewsPage } from './pages/news.js';
 import { StatsPage } from './pages/stats.js';
@@ -48,7 +50,7 @@ function Intro() {
   }, []);
   if (!show) return null;
   return html`<div class="intro" onClick=${() => setShow(false)} aria-hidden="true">
-    <h1>${'TVDAILY'.split('').map((ch, i) => html`<span style=${`animation-delay:${0.08 * i}s`}>${ch}</span>`)}</h1>
+    <h1>${'VEOLEO'.split('').map((ch, i) => html`<span style=${`animation-delay:${0.08 * i}s`}>${ch}</span>`)}</h1>
     <div class="lbl">SERIES · CINE · LIBROS · AUDIOLIBROS</div><div class="ibar"></div>
   </div>`;
 }
@@ -62,7 +64,7 @@ function Palette({ onClose }) {
   const input = useRef();
   useEffect(() => { input.current?.focus(); sfx.open(); }, []);
   const ql = q.trim().toLowerCase();
-  const nav = [...NAV, ['search', 'search', 'Buscar', 'search'], ['stats', 'stats', 'Estadísticas', 'chart'], ['data', 'data', 'Importar y exportar', 'database'], ['settings', 'settings', 'Ajustes', 'settings']]
+  const nav = [...NAV, ['search', 'search', 'Buscar', 'search'], ['stats', 'stats', 'Estadísticas', 'chart'], ['data', 'data', 'Importar y exportar', 'database'], ['settings', 'settings', 'Ajustes', 'settings'], ['about', 'about', 'Qué es Veoleo', 'info']]
     .filter(([, , l]) => !ql || l.toLowerCase().includes(ql)).map(([k, path, label, icon]) => ({ kind: 'nav', label, icon, href: '#/' + path }));
   const mine = ql ? entries.filter((e) => e.title.toLowerCase().includes(ql)).slice(0, 8).map((e) => ({ kind: 'entry', e, label: e.title, href: `#/item/${e.id}` })) : [];
   const searches = ql.length > 1 ? Object.values(TYPES).map((t) => ({ kind: 'search', label: `Buscar “${q.trim()}” en ${t.plural.toLowerCase()}`, icon: t.ico, href: `#/search?type=${t.key}&q=${encodeURIComponent(q.trim())}` })) : [];
@@ -105,12 +107,13 @@ function Header({ route, onPalette }) {
   return html`<header class="header">
     <div class="wrap">
       ${active !== 'home' && html`<button class="btn icon glass back" onClick=${() => { sfx.click(); if (history.length > 1) history.back(); else location.hash = '#/'; }} title="Atrás" aria-label="Atrás"><${Icon} name="back" /></button>`}
-      <a class="logo" href="#/"><i></i><span class="lt">TVDaily</span></a>
+      <a class="logo" href="#/"><i></i><span class="lt">Veoleo</span></a>
       <nav class="nav">${NAV.map(([k, path, label]) => html`<a key=${k} href=${'#/' + path} class=${active === k ? 'on' : ''} onMouseEnter=${() => sfx.hover()}>${label}</a>`)}</nav>
       <div class="header-actions">
         <button class="btn sm glass hide-sm" onClick=${onPalette} title="Buscar (⌘K)"><${Icon} name="search" size=${14} /> Buscar <span class="kbd">⌘K</span></button>
         <a class="btn sm" href="#/search"><${Icon} name="plus" size=${14} /><span class="hide-sm">Añadir</span></a>
-        <button class="btn icon glass" title=${snd ? 'Silenciar' : 'Activar sonido'} aria-label="Sonido" onClick=${() => { setSound(!snd); setSnd(!snd); }}><${Icon} name=${snd ? 'sound' : 'mute'} /></button>
+        <${LangToggle} />
+        <button class="btn icon glass hide-sm" title=${snd ? 'Silenciar' : 'Activar sonido'} aria-label="Sonido" onClick=${() => { setSound(!snd); setSnd(!snd); }}><${Icon} name=${snd ? 'sound' : 'mute'} /></button>
         <div style="position:relative">
           <${Avatar} user=${profile || { displayName: user?.email }} size=${38} onClick=${() => { setMenu(!menu); sfx.click(); }} />
           ${menu && html`<div class="menu glass">
@@ -119,6 +122,7 @@ function Header({ route, onPalette }) {
             <a href="#/stats"><${Icon} name="chart" /> Estadísticas</a>
             <a href="#/data"><${Icon} name="database" /> Importar y exportar</a>
             <a href="#/settings"><${Icon} name="settings" /> Ajustes</a>
+            <a href="#/about"><${Icon} name="info" /> Qué es Veoleo</a>
             ${SUPPORT_URL && html`<a href=${SUPPORT_URL} target="_blank" rel="noopener" style="color:#ffdd00"><${Icon} name="coffee" /> Invítame a un café</a>`}
             <button onClick=${() => { sfx.close(); logout(); }}><${Icon} name="logout" /> Cerrar sesión</button>
           </div>`}
@@ -152,6 +156,8 @@ function Page({ route }) {
     case 'explore': return html`<${ExplorePage} />`;
     case 'u': return html`<${ProfilePage} key=${b} uid=${b} route=${route} />`;
     case 'settings': return html`<${SettingsPage} />`;
+    case 'post': return html`<${PostPage} key=${b} id=${b} />`;
+    case 'about': return html`<${AboutPage} />`;
     default: return html`<div class="page wrap"><div class="empty"><div class="kicker">404</div><h1 class="display" style="margin:20px 0">Fuera de plano</h1><div class="row"><a class="btn" href="#/">Volver al inicio</a></div></div></div>`;
   }
 }
@@ -159,7 +165,7 @@ function Page({ route }) {
 // Si una pantalla falla, se muestra un aviso en lugar de romper la app.
 class Boundary extends Component {
   constructor() { super(); this.state = { err: null }; }
-  componentDidCatch(err) { console.error('[TVDaily] pantalla', err); this.setState({ err }); }
+  componentDidCatch(err) { console.error('[Veoleo] pantalla', err); this.setState({ err }); }
   render() {
     if (!this.state.err) return this.props.children;
     return html`<div class="page wrap"><div class="empty"><div class="kicker" style="--c:var(--red)">Error</div>
@@ -181,7 +187,8 @@ function App() {
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
   }, []);
-  if (!st.authReady) return html`<div class="boot"><b>TVDAILY</b></div>`;
+  if (!st.authReady) return html`<div class="boot"><b>VEOLEO</b></div>`;
+  if (!st.user && route.name === 'about') return html`<${Boundary}><${AboutPage} public /></${Boundary}>`;
   if (!st.user) return html`<${Boundary}><${AuthPage} /></${Boundary}><${Toasts} />`;
   return html`
     <${Intro} />
@@ -195,6 +202,9 @@ function App() {
 
 /* ───────────── arranque ───────────── */
 
+document.documentElement.lang = LANG;
+if (LANG === 'en') document.title = 'Veoleo — series, movies, books & audiobooks';
+startDomTranslation(document.body);
 unlockAudio();
 trackCursor();
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
@@ -202,7 +212,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 }
 let stop = null;
 let syncTimer = null;
-window.addEventListener('unhandledrejection', (e) => console.warn('[TVDaily] promesa sin capturar', e.reason));
+window.addEventListener('unhandledrejection', (e) => console.warn('[Veoleo] promesa sin capturar', e.reason));
 onAuth(async (user) => {
   stop?.(); stop = null; clearTimeout(syncTimer); resetReconcile();
   if (!user) {
@@ -214,7 +224,7 @@ onAuth(async (user) => {
     const [profile, settings] = await Promise.all([ensureProfile(user), loadSettings(user.uid)]);
     setState({ profile, settings, authReady: true });
   } catch (e) {
-    console.error('[TVDaily] perfil', e);
+    console.error('[Veoleo] perfil', e);
     setState({ profile: { uid: user.uid, displayName: user.displayName || user.email, handle: '', photoURL: user.photoURL || '', challenges: {} }, settings: {}, authReady: true });
     toast('No se pudo cargar tu perfil: ' + e.message, 'err', 6000);
   }
