@@ -10,6 +10,11 @@ service cloud.firestore {
 
     function authed() { return request.auth != null; }
     function uid() { return request.auth.uid; }
+    // Nombre y @usuario reales en lo que se publica (nadie puede firmar como otra persona).
+    function signedAsMe() {
+      let me = get(/databases/$(database)/documents/users/$(uid())).data;
+      return request.resource.data.authorHandle == me.handle && request.resource.data.authorName == me.displayName;
+    }
     function entryReadable(entryId) {
       let e = get(/databases/$(database)/documents/entries/$(entryId)).data;
       return e.visibility == 'public' || e.ownerId == uid();
@@ -47,7 +52,7 @@ service cloud.firestore {
       match /comments/{commentId} {
         allow read: if authed() && entryReadable(entryId);
         allow create: if authed() && entryReadable(entryId)
-          && request.resource.data.authorId == uid()
+          && request.resource.data.authorId == uid() && signedAsMe()
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() < 2000;
@@ -62,7 +67,9 @@ service cloud.firestore {
     }
 
     match /notes/{entryId} {
-      allow read: if authed() && (resource.data.ownerId == uid() || resource.data.isPublic == true);
+      // Una nota pública solo se ve si su entrada también es pública.
+      allow read: if authed() && (resource.data.ownerId == uid()
+        || (resource.data.isPublic == true && get(/databases/$(database)/documents/entries/$(entryId)).data.visibility == 'public'));
       allow create: if authed() && request.resource.data.ownerId == uid()
         && get(/databases/$(database)/documents/entries/$(entryId)).data.ownerId == uid();
       allow update: if authed() && resource.data.ownerId == uid() && request.resource.data.ownerId == uid();
@@ -84,7 +91,7 @@ service cloud.firestore {
 
     match /posts/{postId} {
       allow read: if authed();
-      allow create: if authed() && request.resource.data.authorId == uid()
+      allow create: if authed() && request.resource.data.authorId == uid() && signedAsMe()
         && request.resource.data.text is string && request.resource.data.text.size() <= 500
         && request.resource.data.likeCount == 0 && request.resource.data.replyCount == 0;
       allow update: if authed() && (
@@ -101,7 +108,7 @@ service cloud.firestore {
       }
       match /replies/{replyId} {
         allow read: if authed();
-        allow create: if authed() && request.resource.data.authorId == uid()
+        allow create: if authed() && request.resource.data.authorId == uid() && signedAsMe()
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000
           && getAfter(postPath(postId)).data.replyCount == get(postPath(postId)).data.replyCount + 1;
