@@ -313,6 +313,18 @@ const EN = {
   'Esa cuenta ya existe. Cierra la sesión de invitado y entra con ella (el diario de prueba no se pasa a una cuenta que ya existe).': "That account already exists. Sign out of guest mode and sign in with it (the trial diary can't be moved to an existing account).",
   'El modo invitado no está disponible ahora mismo.': 'Guest mode is not available right now.', 'Esta cuenta ya está guardada.': 'This account is already saved.',
 
+
+  // grafo
+  'Grafo': 'Graph', 'Tu diario como red · al estilo Obsidian': 'Your diary as a network · Obsidian style', 'Imagen para compartir': 'Image to share', 'Conectar por': 'Connect by',
+  'Mostrar': 'Show', 'Personas': 'People', 'Años': 'Years', 'nodos': 'nodes', 'conexiones': 'connections', 'Tu grafo': 'Your graph',
+  'Pellizca para ampliar · toca un nodo': 'Pinch to zoom · tap a node', 'Rueda para ampliar · arrastra para moverte · clic para abrir': 'Scroll to zoom · drag to move · click to open',
+  'La imagen usa los mismos filtros que el grafo: cambia lo que conectas, los tipos o el año antes de exportar.': 'The image uses the same filters as the graph: change connections, types or year before exporting.',
+  'Mi universo en Veoleo': 'My universe on Veoleo', 'Imagen lista': 'Image ready', 'No se pudo cargar el grafo': "Couldn't load the graph", 'Grafo de tu diario': 'Graph of your diary',
+
+  'Etiquetas': 'Labels', 'Principales': 'Main', 'Ninguna': 'None', 'Volver a mi vista': 'Back to my view',
+  'La imagen empieza con la misma vista que tienes en el grafo.': 'The image starts with the same view you have in the graph.',
+  'Arrastra y amplía la vista previa': 'Drag and zoom the preview', '(rueda o pellizco) para encuadrar justo lo que quieres compartir.': '(scroll or pinch) to frame exactly what you want to share.',
+
   // géneros
   'Acción': 'Action', 'Acción y aventura': 'Action & adventure', 'Aventura': 'Adventure', 'Animación': 'Animation', 'Anime': 'Anime', 'Biografía': 'Biography', 'Comedia': 'Comedy',
   'Crimen': 'Crime', 'Documental': 'Documentary', 'Drama': 'Drama', 'Familia': 'Family', 'Fantasía': 'Fantasy', 'Historia': 'History', 'Terror': 'Horror', 'Musical': 'Musical',

@@ -2,9 +2,9 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import {
-  TYPES, statusLabel, starsText, humanDate, safeFilename, fmtDuration, download, loadScript, toMillis,
+  TYPES, statusLabel, starsText, humanDate, safeFilename, fmtDuration, download, loadScript, toMillis, entryYear, uniq,
 } from './utils.js';
-import { getSeasons, deciderUrl, justwatchUrl, platformsOf } from './metadata.js';
+import { getSeasons, deciderUrl, justwatchUrl, platformsOf, canonPlatform } from './metadata.js';
 
 /* ───────────── Render para previsualizar en la app ───────────── */
 
@@ -253,9 +253,23 @@ async function seasonsIfNeeded(e, settings) {
   try { return await getSeasons(e, settings); } catch { return null; }
 }
 
+// Conexiones para la vista de grafo de Obsidian: cada título enlaza con sus géneros, personas, plataformas y año.
+export function graphHubsOf(e) {
+  return {
+    'Géneros': (e.genres || []).slice(0, 4),
+    'Personas': (e.creators || []).filter((p) => p && !/unknown/i.test(p)).slice(0, 3).map((p) => p.replace(/\s+/g, ' ').trim()),
+    'Plataformas': uniq([e.platform, e.network, e.consumption?.readOn, e.consumption?.listenedOn].map((p) => (p ? canonPlatform(p) : ''))).filter((p) => p && p !== 'Otros'),
+    'Años': [entryYear(e)].filter(Boolean).map(String),
+  };
+}
+function connectionsBlock(e) {
+  const links = Object.entries(graphHubsOf(e)).flatMap(([folder, names]) => names.map((n) => `[[${folder}/${safeFilename(n)}|${n}]]`));
+  return links.length ? `\n## Conexiones\n\n${links.join(' · ')}\n` : '';
+}
+
 export async function entryToMarkdown(e, note, settings = {}) {
   const seasons = await seasonsIfNeeded(e, settings);
-  return renderTemplate(settings.mdTemplate || DEFAULT_TEMPLATE, entryContext(e, note, { seasons, episodesMode: settings.exportEpisodes || 'all' }));
+  return renderTemplate(settings.mdTemplate || DEFAULT_TEMPLATE, entryContext(e, note, { seasons, episodesMode: settings.exportEpisodes || 'all' })) + connectionsBlock(e);
 }
 
 export async function exportEntry(e, note, settings = {}) {
@@ -330,6 +344,18 @@ export async function bulkExportZip(entries, notesById, settings = {}, lists = [
     onProgress(++done, entries.length);
   });
   root.file('Veoleo · Índice.md', indexNote(entries, lists));
+  // Notas «nodo» (géneros, personas, plataformas, años): dan forma al grafo de Obsidian y listan sus títulos.
+  const hubs = new Map();
+  for (const e of entries) for (const [folder, names] of Object.entries(graphHubsOf(e))) for (const n of names) {
+    const k = folder + '/' + safeFilename(n);
+    if (!hubs.has(k)) hubs.set(k, { folder, name: n, items: [] });
+    hubs.get(k).items.push(e);
+  }
+  for (const [k, h] of hubs) {
+    const lines = ['---', `tags: [veoleo/nodo, veoleo/${tagify(h.folder)}]`, 'cssclasses: [veoleo, veoleo-hub]', '---', '', `# ${h.name}`, '', `> ${h.items.length} ${h.items.length === 1 ? 'título' : 'títulos'} en tu diario`, ''];
+    for (const e of h.items.sort((a, b) => (b.rating || 0) - (a.rating || 0))) lines.push(`- [[${FOLDERS[e.type]}/${filenameFor(e, settings.filenamePattern).replace(/\.md$/, '')}|${e.title}]] · ${starsText(e.rating)}`);
+    root.file(k + '.md', lines.join('\n') + '\n');
+  }
   for (const l of lists) {
     if (!l.items?.length) continue;
     root.folder('Listas').file(safeFilename(l.name) + '.md', listNote(l, l.items, settings.filenamePattern));
@@ -358,6 +384,7 @@ export const README_EXPORT = `# Cómo usar esta exportación en Obsidian
 1. Copia la carpeta **Veoleo** dentro de tu bóveda.
 2. Copia \`_snippet-veoleo.css\` a \`.obsidian/snippets/veoleo.css\` y actívalo en *Ajustes → Apariencia → Fragmentos CSS*.
 3. (Opcional) Instala **Dataview** para las tablas dinámicas del índice y **Banners** para usar el fondo como banner.
+4. **Vista de grafo:** cada título enlaza con sus géneros, personas, plataformas y año (carpetas *Géneros*, *Personas*, *Plataformas* y *Años*). Abre el grafo de Obsidian y, en *Grupos*, colorea por ruta: \`path:Veoleo/Series\`, \`path:Veoleo/Películas\`, \`path:Veoleo/Libros\`, \`path:Veoleo/Géneros\`…
 `;
 
 // Snippet CSS para que las notas se vean con estética cómic en Obsidian.
