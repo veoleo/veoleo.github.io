@@ -1,15 +1,17 @@
-// Biblioteca propia (o de otra persona) con filtros por tipo, estado, año, ranking, género y plataforma.
+// Biblioteca (propia o de otra persona) con filtros por tipo, estado, año, ranking, género y plataforma.
 import { html, useState, useMemo } from 'preact-standalone';
-import { PosterCard, Seg, Chip, Empty, SkeletonGrid, Modal, Stars } from '../components/ui.js';
+import { PosterCard, Tabs, Chip, SkeletonGrid, Modal, Icon, Scramble } from '../components/ui.js';
 import { useStore, toast } from '../lib/store.js';
 import { setQuery } from '../lib/router.js';
-import { TYPES, STATUS_KEYS, STATUS_ICONS, statusLabel, entryYear, matchRules, sortEntries, uniq } from '../lib/utils.js';
+import { TYPES, STATUS_KEYS, statusLabel, entryYear, matchRules, sortEntries, uniq } from '../lib/utils.js';
 import { platformsOf } from '../lib/metadata.js';
 import { getNotesBulk } from '../lib/db.js';
 import { bulkExportZip, bulkExportSingle } from '../lib/markdown.js';
+import { exportJSON, exportCSV } from '../lib/transfer.js';
 import { sfx } from '../lib/sound.js';
+import { flash } from '../lib/fx.js';
 
-const STATUS_COLORS = { completed: 'var(--teal)', in_progress: 'var(--yellow)', planned: 'var(--pink)', abandoned: 'var(--ink)' };
+const STATUS_COLORS = { completed: 'var(--teal)', in_progress: 'var(--yellow)', planned: 'var(--pink)', abandoned: 'var(--muted)' };
 
 export function readFilters(q) {
   return {
@@ -22,9 +24,9 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
   const { settings, lists } = useStore();
   const [exp, setExp] = useState(false);
   const f = filters;
-  const set = (patch) => { const n = { ...f, ...patch }; setFilters(n); };
+  const set = (patch) => setFilters({ ...f, ...patch });
 
-  const base = entries.filter((e) => (!f.type || e.type === f.type));
+  const base = entries.filter((e) => !f.type || e.type === f.type);
   const years = uniq(base.map(entryYear)).sort((a, b) => b - a);
   const genres = uniq(base.flatMap((e) => e.genres || [])).sort((a, b) => a.localeCompare(b, 'es'));
   const platforms = uniq(base.flatMap((e) => [e.platform, ...platformsOf(e), e.consumption?.readOn, e.consumption?.listenedOn])).sort();
@@ -39,49 +41,47 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
   return html`
     <div>
       ${title}
-      <div class="stack" style="--g:16px;margin:24px 0">
-        <${Seg} value=${f.type} onChange=${(v) => set({ type: v, genre: '', platform: '', format: '' })} options=${[
-          { value: '', label: 'Todo', c: 'var(--ink)', fg: 'var(--paper-2)' },
-          ...Object.values(TYPES).map((t) => ({ value: t.key, label: `${t.icon} ${t.plural}`, c: t.color, fg: t.key === 'book' ? 'var(--ink)' : 'var(--paper-2)' }))]} />
-        <div class="panel filters" style="box-shadow:var(--sh-sm)">
-          <div class="filter-row"><span class="label">Estado</span>
-            <${Chip} on=${!f.status} onClick=${() => set({ status: '' })}>Todos <span class="pill-count">${base.length}</span></${Chip}>
-            ${STATUS_KEYS.map((s) => html`<${Chip} key=${s} on=${f.status === s} color=${STATUS_COLORS[s]} light=${s === 'in_progress' || s === 'planned'} onClick=${() => set({ status: f.status === s ? '' : s })}>
-              ${STATUS_ICONS[s]} ${statusLabel(s, f.type || 'any')} <span class="pill-count">${counts[s]}</span></${Chip}>`)}
-          </div>
-          <div class="filter-row"><span class="label">Ranking</span>
-            ${[0, 1, 2, 3, 4, 5].map((n) => html`<${Chip} key=${n} on=${f.minRating === n} color="var(--yellow)" light onClick=${() => set({ minRating: n })}>${n ? '★'.repeat(n) + (n < 5 ? '+' : '') : 'Cualquiera'}</${Chip}>`)}
-          </div>
-          <div class="filter-row" style="--g:10px">
-            <span class="label">Más</span>
-            <select class="select" style="width:auto" value=${f.year} onChange=${(e) => set({ year: e.currentTarget.value })}>
-              <option value="">Todos los años</option>${years.map((y) => html`<option value=${y}>${y}</option>`)}
-            </select>
-            <select class="select" style="width:auto" value=${f.genre} onChange=${(e) => set({ genre: e.currentTarget.value })}>
-              <option value="">Todos los géneros</option>${genres.map((g) => html`<option>${g}</option>`)}
-            </select>
-            ${platforms.length > 0 && html`<select class="select" style="width:auto" value=${f.platform} onChange=${(e) => set({ platform: e.currentTarget.value })}>
-              <option value="">Cualquier plataforma</option>${platforms.map((p) => html`<option>${p}</option>`)}
-            </select>`}
-            ${(!f.type || f.type === 'book' || f.type === 'audiobook') && html`<select class="select" style="width:auto" value=${f.format} onChange=${(e) => set({ format: e.currentTarget.value })}>
-              <option value="">Leído o escuchado</option><option value="read">📖 Leídos</option><option value="listened">🎧 Escuchados</option>
-            </select>`}
-            <select class="select" style="width:auto" value=${f.sort} onChange=${(e) => set({ sort: e.currentTarget.value })}>
-              <option value="recent">Recientes</option><option value="finished">Fecha de fin</option><option value="rating">Mejor valoradas</option><option value="title">Título A-Z</option><option value="year">Año de estreno</option>
-            </select>
-            <input class="input grow" style="min-width:180px" placeholder="Filtrar por título, autor, etiqueta…" value=${f.text} onInput=${(e) => set({ text: e.currentTarget.value })} />
-          </div>
+      <${Tabs} value=${f.type} onChange=${(v) => set({ type: v, genre: '', platform: '', format: '' })} options=${[
+        { value: '', label: 'Todo', n: entries.length },
+        ...Object.values(TYPES).map((t) => ({ value: t.key, label: t.plural, c: t.color, n: entries.filter((e) => e.type === t.key).length }))]} />
+      <div class="filters" style="border-top:0">
+        <div class="filter-row"><span class="label">Estado</span>
+          <${Chip} on=${!f.status} onClick=${() => set({ status: '' })}>Todos <span class="n">${base.length}</span></${Chip}>
+          ${STATUS_KEYS.map((s) => html`<${Chip} key=${s} on=${f.status === s} color=${STATUS_COLORS[s]} onClick=${() => set({ status: f.status === s ? '' : s })}>
+            ${statusLabel(s, f.type || 'any')} <span class="n">${counts[s]}</span></${Chip}>`)}
         </div>
-        <div class="row between">
-          <b>${shown.length} ${shown.length === 1 ? 'resultado' : 'resultados'}</b>
-          <div class="row" style="--g:8px">
-            ${anyFilter && html`<button class="btn sm ghost" onClick=${() => set({ status: '', year: '', minRating: 0, genre: '', platform: '', format: '', text: '' })}>✕ Limpiar filtros</button>`}
-            ${showExport && shown.length > 0 && html`<button class="btn sm teal" onClick=${() => setExp(true)}>⬇ Exportar ${shown.length} a Markdown</button>`}
-          </div>
+        <div class="filter-row"><span class="label">Ranking</span>
+          ${[0, 1, 2, 3, 4, 4.5, 5].map((n) => html`<${Chip} key=${n} on=${f.minRating === n} color="var(--yellow)" onClick=${() => set({ minRating: n })}>${n ? `${String(n).replace('.', ',')}★${n < 5 ? '+' : ''}` : 'Cualquiera'}</${Chip}>`)}
+        </div>
+        <div class="filter-row">
+          <span class="label">Afinar</span>
+          <select class="select" value=${f.year} onChange=${(e) => set({ year: e.currentTarget.value })}>
+            <option value="">Todos los años</option>${years.map((y) => html`<option value=${y}>${y}</option>`)}
+          </select>
+          <select class="select" value=${f.genre} onChange=${(e) => set({ genre: e.currentTarget.value })}>
+            <option value="">Todos los géneros</option>${genres.map((g) => html`<option>${g}</option>`)}
+          </select>
+          ${platforms.length > 0 && html`<select class="select" value=${f.platform} onChange=${(e) => set({ platform: e.currentTarget.value })}>
+            <option value="">Cualquier plataforma</option>${platforms.map((p) => html`<option>${p}</option>`)}
+          </select>`}
+          ${(!f.type || f.type === 'book' || f.type === 'audiobook') && html`<select class="select" value=${f.format} onChange=${(e) => set({ format: e.currentTarget.value })}>
+            <option value="">Leído o escuchado</option><option value="read">Leídos</option><option value="listened">Escuchados</option>
+          </select>`}
+          <select class="select" value=${f.sort} onChange=${(e) => set({ sort: e.currentTarget.value })}>
+            <option value="recent">Recientes</option><option value="finished">Fecha de fin</option><option value="rating">Mejor valoradas</option><option value="title">Título A–Z</option><option value="year">Año de estreno</option>
+          </select>
+          <input class="input grow" style="min-width:200px" placeholder="Título, autoría, etiqueta…" value=${f.text} onInput=${(e) => set({ text: e.currentTarget.value })} />
+        </div>
+      </div>
+      <div class="row between" style="margin:24px 0 32px">
+        <span class="count">${shown.length} ${shown.length === 1 ? 'RESULTADO' : 'RESULTADOS'}</span>
+        <div class="row" style="--g:8px">
+          ${anyFilter && html`<button class="btn text" onClick=${() => set({ status: '', year: '', minRating: 0, genre: '', platform: '', format: '', text: '' })}>Limpiar filtros</button>`}
+          ${showExport && shown.length > 0 && html`<button class="btn sm" onClick=${() => setExp(true)}><${Icon} name="download" size=${14} /> Exportar ${shown.length}</button>`}
         </div>
       </div>
       ${shown.length ? html`<div class="grid">${shown.map((e) => html`<${PosterCard} key=${e.id} e=${e} />`)}</div>`
-        : html`<${Empty} word="¡NADA!" title="No hay nada con esos filtros" />`}
+        : html`<p class="lead">Nada coincide con esos filtros.</p>`}
       ${exp && html`<${ExportModal} entries=${shown} name=${exportName} settings=${settings} lists=${lists} onClose=${() => setExp(false)} />`}
     </div>`;
 }
@@ -90,28 +90,36 @@ export function ExportModal({ entries, name, settings, lists = [], onClose }) {
   const [prog, setProg] = useState(null);
   async function run(kind) {
     try {
+      if (kind === 'json') { await exportJSON(entries, `${name}.json`); done(); return; }
+      if (kind === 'csv') { exportCSV(entries, `${name}.csv`); done(); return; }
+      if (kind === 'letterboxd') { exportCSV(entries.filter((e) => e.type === 'movie'), `${name}-letterboxd.csv`, 'letterboxd'); done(); return; }
+      if (kind === 'goodreads') { exportCSV(entries.filter((e) => e.type === 'book' || e.type === 'audiobook'), `${name}-goodreads.csv`, 'goodreads'); done(); return; }
       setProg([0, entries.length]);
       const notes = await getNotesBulk(entries.map((e) => e.id));
       const ids = new Set(entries.map((e) => e.id));
       const listsWithItems = lists.filter((l) => l.kind !== 'smart').map((l) => ({ ...l, items: entries.filter((e) => (l.itemIds || []).includes(e.id)) }))
         .filter((l) => l.items.length && l.items.every((e) => ids.has(e.id)));
       const cb = (d, t) => setProg([d, t]);
-      if (kind === 'zip') await bulkExportZip(entries, notes, settings, listsWithItems, cb, `${name}.zip`);
+      if (kind === 'zip') await bulkExportZip(entries, notes, settings, listsWithItems, cb, `${name}-obsidian.zip`);
       else await bulkExportSingle(entries, notes, settings, cb, `${name}.md`);
-      sfx.braam(.7); toast('¡Exportación lista!', 'ok'); onClose();
+      done();
     } catch (e) { console.error(e); toast('Falló la exportación: ' + e.message, 'err'); setProg(null); }
   }
-  return html`<${Modal} title="Exportar a Markdown" color="var(--teal)" width=${620} onClose=${onClose}>
-    ${prog ? html`<div class="stack" style="--g:12px;text-align:center">
-        <div class="sfx" style="font-size:3rem;color:var(--teal);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill">¡EXPORTANDO!</div>
-        <div class="season"><div class="bar" style="margin:16px"><i style=${`width:${(prog[0] / Math.max(1, prog[1])) * 100}%`}></i></div></div>
-        <b>${prog[0]} / ${prog[1]}</b><span class="small muted">Incluye episodios con sinopsis de las series (puede tardar un poco).</span></div>`
-    : html`<div class="stack" style="--g:16px">
-        <p style="margin:0">${entries.length} entradas con portada, ficha, tu nota, tráiler, banda sonora y episodios — formateado para Obsidian.</p>
-        <button class="btn big teal" onClick=${() => run('zip')}>🗂 Bóveda Obsidian (.zip)</button>
-        <p class="small muted" style="margin:-8px 0 0">Una nota por entrada en carpetas por tipo + índice con Dataview + listas + snippet CSS.</p>
-        <button class="btn big" onClick=${() => run('single')}>📄 Un único archivo .md</button>
-        <p class="small muted" style="margin:0">La plantilla se configura en <a href="#/settings">Ajustes</a>.</p>
+  function done() { sfx.braam(0.4); flash('Exportado', '#c6ff3d'); onClose(); }
+  const Opt = ({ k, t, d }) => html`<button class="list-card" style="text-align:left;background:none;border-left:0;border-right:0;border-bottom:0;cursor:pointer;padding:20px 0;width:100%;color:inherit;font:inherit" onClick=${() => run(k)}>
+    <h3>${t}</h3><span class="label" style="text-transform:none;letter-spacing:.02em;font-size:.85rem">${d}</span></button>`;
+  return html`<${Modal} kicker="Exportar" title=${`${entries.length} entradas`} width=${640} onClose=${onClose}>
+    ${prog ? html`<div class="stack" style="--g:18px">
+        <h2 class="display" style="font-size:4rem">${Math.round((prog[0] / Math.max(1, prog[1])) * 100)}%</h2>
+        <div class="season"><div class="sbar" style="height:2px"><i style=${`width:${(prog[0] / Math.max(1, prog[1])) * 100}%`}></i></div></div>
+        <span class="count">${prog[0]} / ${prog[1]} · INCLUYE EPISODIOS CON SINOPSIS</span></div>`
+    : html`<div class="stack" style="--g:0">
+        <${Opt} k="zip" t="Bóveda de Obsidian (.zip)" d="Una nota por título en carpetas, índice con Dataview, listas y snippet CSS." />
+        <${Opt} k="single" t="Un único Markdown" d="Todas las notas en un solo archivo .md." />
+        <${Opt} k="csv" t="Hoja de cálculo (CSV)" d="Título, tipo, estado, valoración, fechas, plataforma y más." />
+        <${Opt} k="letterboxd" t="CSV para Letterboxd" d="Tus películas en el formato de importación de Letterboxd." />
+        <${Opt} k="goodreads" t="CSV para Goodreads" d="Tus libros en el formato de importación de Goodreads." />
+        <${Opt} k="json" t="Copia de seguridad (JSON)" d="Todo, incluidas tus notas. Se puede volver a importar." />
       </div>`}
   </${Modal}>`;
 }
@@ -125,11 +133,12 @@ export function LibraryPage({ route }) {
   };
   if (!entriesReady) return html`<div class="page wrap"><${SkeletonGrid} n=${12} /></div>`;
   if (!entries.length) {
-    return html`<div class="page wrap"><${Empty} word="¡ESTRENO!" title="Tu biblioteca está vacía" sub="Busca tu serie, peli o libro favorito y empieza tu diario.">
-      <a class="btn big red" href="#/search">🔎 Buscar algo</a></${Empty}></div>`;
+    return html`<div class="page wrap"><div class="empty"><div class="kicker">Biblioteca</div><h1 class="display" style="margin:20px 0">Vacía,<br />de momento.</h1>
+      <p class="lead">Busca tu primera serie, película o libro, o trae tu historial de TV Time, Letterboxd o Goodreads.</p>
+      <div class="row" style="margin-top:28px"><a class="btn lg" href="#/search"><${Icon} name="search" /> Buscar</a><a class="btn lg ghost" href="#/data"><${Icon} name="upload" /> Importar</a></div></div></div>`;
   }
   return html`<div class="page wrap">
     <${FilteredGrid} entries=${entries} filters=${filters} setFilters=${setFilters}
-      title=${html`<h1 class="mega">Mi <span class="mark blue tilt-r">biblioteca</span></h1>`} />
+      title=${html`<div class="page-head"><div><div class="kicker">${entries.length} títulos</div><h1 class="display" style="margin-top:20px"><${Scramble} text="Biblioteca" /></h1></div></div>`} />
   </div>`;
 }

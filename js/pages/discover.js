@@ -1,38 +1,36 @@
-// Novedades: estrenos de series y pelis, por plataforma, calendario de episodios y recomendaciones.
+// Novedades: estrenos de series por plataforma, películas, libros y audiolibros del momento,
+// calendario de tus próximos episodios y recomendaciones.
 import { html, useState, useEffect } from 'preact-standalone';
-import { PosterCard, Chip, LazyProviders, Spinner, Cover, useAsync } from '../components/ui.js';
+import { PosterCard, Chip, Spinner, useAsync, SectionHead, Scramble } from '../components/ui.js';
 import { PreviewModal, findExisting } from '../components/preview.js';
 import { useStore } from '../lib/store.js';
-import { discoverSections, providerOptions, recommendationsFor, nextEpisodeOf, hasTmdb } from '../lib/metadata.js';
+import { discoverSections, STREAMERS, recommendationsFor, nextEpisodeOf } from '../lib/metadata.js';
 import { feedFor } from '../lib/db.js';
 import { humanDate, todayISO, TYPES } from '../lib/utils.js';
 import { setQuery } from '../lib/router.js';
 
 function Card({ it, onOpen, entries, label }) {
   const ex = findExisting(entries, it);
-  const date = it.releaseDate ? humanDate(it.releaseDate) : it.year;
+  const date = it.releaseDate && it.releaseDate.length === 10 ? humanDate(it.releaseDate) : it.year;
   return html`<${PosterCard} e=${ex ? { ...it, status: ex.status, rating: ex.rating } : it} href="javascript:void 0"
-    onClick=${(ev) => { ev.preventDefault(); onOpen(it); }}
-    sub=${[label || it.premiereLabel, date].filter(Boolean).join(' · ')}
-    extra=${html`<div style="margin-top:6px"><${LazyProviders} item=${it} /></div>`} />`;
+    onClick=${(ev) => { ev.preventDefault(); onOpen(it); }} showStatus=${!!ex}
+    sub=${label || [it.premiereLabel || TYPES[it.type]?.label, it.network || date].filter(Boolean).join(' · ')} />`;
 }
 
-function Carousel({ title, items, color, onOpen, entries, note }) {
-  if (!items?.length) return null;
-  return html`<div class="section">
-    <div class="section-head" style=${`--c:${color}`}><h2 class="h2">${title}</h2>${note && html`<span class="small muted">${note}</span>`}</div>
-    <div class="carousel">${items.map((it) => html`<${Card} key=${it.source + it.sourceId} it=${it} onOpen=${onOpen} entries=${entries} label=${it.because ? `Porque viste ${it.because}` : ''} />`)}</div>
-  </div>`;
+function Row({ s, onOpen, entries, color }) {
+  if (!s?.items?.length) return null;
+  return html`<section class="section reveal">
+    <${SectionHead} kicker=${s.kicker} title=${s.title} color=${color}><span class="count">${s.items.length}</span></${SectionHead}>
+    <div class="carousel">${s.items.map((it) => html`<${Card} key=${it.source + it.sourceId} it=${it} onOpen=${onOpen} entries=${entries} label=${it.because ? `Porque te gustó ${it.because}` : ''} />`)}</div>
+  </section>`;
 }
 
 export function DiscoverPage({ route }) {
   const { settings, entries, following, user } = useStore();
   const [provider, setProvider] = useState(route.query.p || '');
   const [preview, setPreview] = useState(null);
-  const tmdb = hasTmdb(settings);
-  const provs = useAsync(() => providerOptions(settings), [tmdb]);
-  const disc = useAsync(() => discoverSections(settings, { provider }), [provider, tmdb]);
-  const recs = useAsync(() => recommendationsFor(entries, settings), [tmdb, entries.length]);
+  const disc = useAsync(() => discoverSections(settings, { provider }), [provider]);
+  const recs = useAsync(() => recommendationsFor(entries, settings), [entries.length]);
   const community = useAsync(async () => {
     const list = await feedFor(following);
     const seen = new Set();
@@ -40,51 +38,43 @@ export function DiscoverPage({ route }) {
       .filter((e) => { const k = e.type + e.title.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
       .sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 20);
   }, [following.join(','), entries.length]);
-
   useEffect(() => setQuery({ p: provider }), [provider]);
-  const colors = ['var(--red)', 'var(--blue)', 'var(--teal)', 'var(--orange)', 'var(--purple)'];
+  const colors = ['var(--accent)', 'var(--blue)', 'var(--red)', 'var(--teal)', 'var(--yellow)', 'var(--purple)'];
 
   return html`<div class="page wrap">
-    <h1 class="mega">¿Qué <span class="mark red tilt-l">ver</span> ahora?</h1>
-    <p class="muted" style="font-size:1.1rem;margin:14px 0 24px">Estrenos de series y películas, dónde verlos, tu calendario de episodios y recomendaciones.</p>
-
-    ${!tmdb && html`<div class="panel tint" style="--c:var(--yellow);margin-bottom:24px">
-      <b>💡 Activa el modo completo:</b> con una clave gratuita de TMDB verás estrenos de cine, tendencias, plataformas (Netflix, Max, Disney+…) y recomendaciones personales.
-      <a class="btn sm" style="margin-left:8px" href="#/settings">Añadir clave en Ajustes</a>
-    </div>`}
-
+    <div class="page-head">
+      <div>
+        <div class="kicker">Estrenos · Tendencias · Calendario</div>
+        <h1 class="display" style="margin-top:20px"><${Scramble} text="Novedades" /></h1>
+      </div>
+    </div>
     <div class="row" style="--g:8px">
-      <span class="label">Plataforma</span>
-      <${Chip} on=${!provider} color="var(--ink)" onClick=${() => setProvider('')}>Todas</${Chip}>
-      ${(provs.data || []).map((p) => html`<${Chip} key=${p.id} on=${provider === p.id} color="var(--blue)" onClick=${() => setProvider(provider === p.id ? '' : p.id)}>
-        ${p.logo && html`<img src=${p.logo} alt="" style="width:20px;height:20px;border-radius:5px" />`}${p.name}</${Chip}>`)}
+      <span class="label" style="margin-right:8px">Plataforma</span>
+      <${Chip} on=${!provider} onClick=${() => setProvider('')}>Todas</${Chip}>
+      ${STREAMERS.map((p) => html`<${Chip} key=${p} on=${provider === p} onClick=${() => setProvider(provider === p ? '' : p)}>${p}</${Chip}>`)}
     </div>
 
     <${Calendar} entries=${entries} settings=${settings} />
-
-    ${recs.data?.length > 0 && html`<${Carousel} title="Recomendado para ti" items=${recs.data} color="var(--pink)" onOpen=${setPreview} entries=${entries} note="A partir de lo que mejor has valorado" />`}
-
-    ${disc.loading ? html`<${Spinner} />` : (disc.data || []).map((s, i) => html`<${Carousel} key=${s.id} title=${s.title} items=${s.items} color=${colors[i % colors.length]} onOpen=${setPreview} entries=${entries} />`)}
-    ${!disc.loading && !(disc.data || []).length && html`<p class="muted section">No hay novedades para ese filtro ahora mismo.</p>`}
-
-    ${community.data?.length > 0 && html`<div class="section">
-      <div class="section-head" style="--c:var(--teal)"><h2 class="h2">Triunfa entre la gente que sigues</h2></div>
-      <div class="carousel">${community.data.map((e) => html`<${PosterCard} key=${e.id} e=${e} showStatus=${false} sub=${`★ ${e.rating} · ${e.ownerName}`} />`)}</div>
-    </div>`}
-
+    ${!provider && recs.data?.length > 0 && html`<${Row} s=${{ kicker: 'Para ti', title: 'Recomendado', items: recs.data }} onOpen=${setPreview} entries=${entries} color="var(--pink)" />`}
+    ${disc.loading ? html`<${Spinner} />` : (disc.data || []).map((s, i) => html`<${Row} key=${s.id} s=${s} onOpen=${setPreview} entries=${entries} color=${colors[i % colors.length]} />`)}
+    ${!disc.loading && !(disc.data || []).length && html`<p class="muted section">No hay estrenos para ese filtro ahora mismo.</p>`}
+    ${!provider && community.data?.length > 0 && html`<section class="section reveal">
+      <${SectionHead} kicker="Comunidad" title="Triunfa entre la gente que sigues" color="var(--teal)" />
+      <div class="carousel">${community.data.map((e) => html`<${PosterCard} key=${e.id} e=${e} showStatus=${false} sub=${`${String(e.rating).replace('.', ',')}★ · ${e.ownerName}`} />`)}</div>
+    </section>`}
     ${preview && html`<${PreviewModal} item=${preview} onClose=${() => setPreview(null)} />`}
   </div>`;
 }
 
-// Próximos episodios de las series que sigues (en curso o pendientes).
-function Calendar({ entries, settings }) {
-  const series = entries.filter((e) => e.type === 'series' && (e.status === 'in_progress' || e.status === 'planned' || (e.status === 'completed' && e.showStatus && !/Ended|Canceled/.test(e.showStatus))));
+// Próximos episodios de tus series (en curso, pendientes o terminadas que siguen en emisión).
+export function Calendar({ entries, settings, compact = false }) {
+  const series = entries.filter((e) => e.type === 'series' && e.status !== 'abandoned' && (e.status !== 'completed' || !/Ended|Canceled/.test(e.showStatus || '')));
   const key = series.map((e) => e.id).join(',');
   const cal = useAsync(async () => {
     const today = todayISO();
     const out = [];
-    const queue = [...series].slice(0, 30);
-    await Promise.all(Array.from({ length: 4 }, async () => {
+    const queue = series.slice(0, 40);
+    await Promise.all(Array.from({ length: 5 }, async () => {
       while (queue.length) {
         const e = queue.shift();
         let n = e.nextEpisode;
@@ -95,16 +85,17 @@ function Calendar({ entries, settings }) {
     return out.sort((a, b) => a.n.airdate.localeCompare(b.n.airdate));
   }, [key]);
   if (!series.length) return null;
-  return html`<div class="section">
-    <div class="section-head" style="--c:var(--red)"><h2 class="h2">Tu calendario</h2><span class="small muted">Próximos episodios de tus series</span></div>
-    ${cal.loading ? html`<${Spinner} />` : !cal.data?.length ? html`<p class="muted">Ninguna de tus series tiene episodios anunciados ahora mismo.</p>`
-      : html`<div class="grid" style="--min:300px">${cal.data.map(({ e, n }) => {
+  return html`<section class="section">
+    <${SectionHead} kicker="Tu calendario" title="Próximos episodios" color="var(--red)" />
+    ${cal.loading ? html`<${Spinner} />` : !cal.data?.length ? html`<p class="muted">Ninguna de tus series tiene episodios anunciados por ahora.</p>`
+      : html`<div class="grid" style="--min:360px;gap:0 40px">${cal.data.slice(0, compact ? 6 : 30).map(({ e, n }) => {
           const d = new Date(n.airdate + 'T12:00:00');
+          const days = Math.round((d - new Date(todayISO() + 'T12:00:00')) / 864e5);
           return html`<a class="cal-item" key=${e.id} href=${`#/item/${e.id}`}>
             <div class="cal-date"><b>${d.getDate()}</b><span>${d.toLocaleDateString('es-ES', { month: 'short' })}</span></div>
-            <div style="min-width:0"><b style="display:block">${e.title}</b><span class="small"><span class="code" style="font-weight:800">${n.code}</span> · ${n.name || ''}</span>
-              <div class="small muted">${d.toLocaleDateString('es-ES', { weekday: 'long' })}${e.network ? ' · ' + e.network : ''}</div></div>
+            <div style="min-width:0"><div style="font-weight:600">${e.title}</div><div class="count" style="margin-top:4px">${n.code} · ${n.name || ''}</div></div>
+            <span class="tag" style=${`--c:${days === 0 ? 'var(--accent)' : 'var(--muted)'}`}>${days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : `En ${days} d`}</span>
           </a>`;
         })}</div>`}
-  </div>`;
+  </section>`;
 }
