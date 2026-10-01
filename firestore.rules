@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Reglas de seguridad de TVDaily.
+// Reglas de seguridad de Veoleo.
 // - Perfiles: visibles para usuarios con sesión; cada cual edita el suyo.
 // - Entradas: públicas o privadas (visibility). Solo la dueña las escribe.
 // - Notas: documento aparte para poder ser privadas aunque la entrada sea pública.
@@ -74,6 +74,39 @@ service cloud.firestore {
       allow create: if authed() && request.resource.data.ownerId == uid();
       allow update: if authed() && resource.data.ownerId == uid() && request.resource.data.ownerId == uid();
       allow delete: if authed() && resource.data.ownerId == uid();
+    }
+
+    // Publicaciones: estado, progreso y conversación. Contadores solo ±1 y coherentes con los likes.
+    function postPath(postId) { return /databases/$(database)/documents/posts/$(postId); }
+    function likePath(postId) { return /databases/$(database)/documents/posts/$(postId)/likes/$(uid()); }
+    function onlyKey(k) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly([k]); }
+    function step(k) { return request.resource.data[k] - resource.data[k]; }
+
+    match /posts/{postId} {
+      allow read: if authed();
+      allow create: if authed() && request.resource.data.authorId == uid()
+        && request.resource.data.text is string && request.resource.data.text.size() <= 500
+        && request.resource.data.likeCount == 0 && request.resource.data.replyCount == 0;
+      allow update: if authed() && (
+        (resource.data.authorId == uid() && request.resource.data.authorId == uid()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'spoiler', 'entry', 'authorName', 'authorHandle', 'authorPhoto']))
+        || (onlyKey('likeCount') && step('likeCount') == 1 && !exists(likePath(postId)) && existsAfter(likePath(postId)))
+        || (onlyKey('likeCount') && step('likeCount') == -1 && exists(likePath(postId)) && !existsAfter(likePath(postId)))
+        || (onlyKey('replyCount') && (step('replyCount') == 1 || step('replyCount') == -1)));
+      allow delete: if authed() && resource.data.authorId == uid();
+
+      match /likes/{likerId} {
+        allow read: if authed();
+        allow create, delete: if authed() && likerId == uid();
+      }
+      match /replies/{replyId} {
+        allow read: if authed();
+        allow create: if authed() && request.resource.data.authorId == uid()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000
+          && getAfter(postPath(postId)).data.replyCount == get(postPath(postId)).data.replyCount + 1;
+        allow delete: if authed() && (resource.data.authorId == uid() || get(postPath(postId)).data.authorId == uid());
+      }
     }
 
     match /follows/{followId} {

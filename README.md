@@ -1,8 +1,8 @@
-# TVDaily
+# Veoleo
 
 Tu diario de **series, películas, libros y audiolibros**. Interfaz futurista, sin configuración: todo funciona sin claves de API.
 
-**App:** https://wilderwests.github.io/TVDaily/
+**App:** https://veoleo.github.io/
 
 ## Funciones
 
@@ -16,7 +16,7 @@ Tu diario de **series, películas, libros y audiolibros**. Interfaz futurista, s
 - **Estadísticas**: mapa de actividad, horas de pantalla, páginas, distribución de notas, géneros, plataformas y lo mejor del año.
 - **Retos** anuales con ritmo previsto.
 - **Comunidad**: perfiles, seguir, comentarios, me gusta; entradas y notas públicas o privadas por separado.
-- **Importar** desde TV Time (exportación de datos), Letterboxd, Goodreads, IMDb o copia de TVDaily, con autocompletado de portadas.
+- **Importar** desde TV Time (exportación de datos), Letterboxd, Goodreads, IMDb o copia de Veoleo, con autocompletado de portadas.
 - **Exportar** a Obsidian (bóveda .zip con Dataview y snippet CSS, o un solo .md, plantilla configurable), CSV, Letterboxd, Goodreads, Trakt y JSON.
 - **Paleta de comandos** (⌘K), atajos, instalable como app (PWA) y sonidos sutiles de interfaz.
 
@@ -33,7 +33,7 @@ js/components/             ui, icons, entry-form, episodes, media, preview, soci
 js/pages/                  home, discover, news, search, library, item, lists, challenges, stats, data, social, settings, auth
 scripts/build_news.py      agregador de noticias
 firestore.rules            reglas de seguridad
-obsidian/tvdaily.css       snippet para Obsidian
+obsidian/veoleo.css       snippet para Obsidian
 ```
 
 ## Desarrollo local

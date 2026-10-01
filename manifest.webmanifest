@@ -1,6 +1,6 @@
 {
-  "name": "TVDaily",
-  "short_name": "TVDaily",
+  "name": "Veoleo",
+  "short_name": "Veoleo",
   "description": "Tu diario de series, películas, libros y audiolibros.",
   "start_url": "./",
   "scope": "./",

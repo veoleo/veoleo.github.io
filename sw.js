@@ -1,5 +1,5 @@
 // Service worker: la app funciona instalada y abre aunque la red falle.
-const CACHE = 'tvdaily-v2';
+const CACHE = 'veoleo-v3';
 const SHELL = ['./', './index.html', './css/app.css', './js/main.js', './assets/icon.svg', './manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
