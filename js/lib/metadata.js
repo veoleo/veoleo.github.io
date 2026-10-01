@@ -5,6 +5,7 @@
 //  Audiolibros: Apple Books (iTunes) · Google Books
 //  Extras:      Wikidata (tráiler de YouTube, compositor, géneros) · Wikipedia ES (sinopsis)
 //               iTunes (banda sonora con previews de 30 s)
+import { DEFAULT_REGION, LANG } from './i18n.js';
 import { normGenres, stripHtml } from './utils.js';
 import { SHARED_TMDB_KEY } from '../config.js';
 
@@ -55,7 +56,7 @@ function tmdbKey(settings) { return (settings?.tmdbKey || SHARED_TMDB_KEY || '')
 async function tmdb(path, params, key) {
   const bearer = key.length > 40;
   const u = new URL('https://api.themoviedb.org/3' + path);
-  for (const [k, v] of Object.entries({ language: 'es-ES', ...params })) u.searchParams.set(k, v);
+  for (const [k, v] of Object.entries({ language: LANG === 'en' ? 'en-US' : 'es-ES', ...params })) u.searchParams.set(k, v);
   if (!bearer) u.searchParams.set('api_key', key);
   return getJSON(u.toString(), bearer ? { headers: { Authorization: 'Bearer ' + key } } : {});
 }
@@ -380,12 +381,12 @@ export async function searchMedia(type, q, settings = {}) {
   q = String(q || '').trim();
   if (q.length < 2) return [];
   const key = tmdbKey(settings);
-  const safe = (p) => p.catch((e) => { console.warn('[TVDaily] fuente falló:', e.message); return []; });
+  const safe = (p) => p.catch((e) => { console.warn('[Veoleo] fuente falló:', e.message); return []; });
   let lists = [];
   if (type === 'series') lists = await Promise.all([key ? safe(tmdbSearch('series', q, key)) : [], safe(tvmazeSearch(q)), safe(imdbSearch('series', q))]);
   else if (type === 'movie') lists = await Promise.all([key ? safe(tmdbSearch('movie', q, key)) : [], safe(imdbSearch('movie', q)), safe(wikidataSearch('movie', q))]);
   else if (type === 'book') lists = await Promise.all([safe(googleBooks(q, 'book')), safe(openLibrary(q, 'book'))]);
-  else if (type === 'audiobook') lists = await Promise.all([safe(itunesAudiobooks(q, settings.region || 'ES')), safe(googleBooks(q, 'audiobook'))]);
+  else if (type === 'audiobook') lists = await Promise.all([safe(itunesAudiobooks(q, settings.region || DEFAULT_REGION)), safe(googleBooks(q, 'audiobook'))]);
   return dedupe(type === 'series' && !key ? [...lists[1], ...lists[2]] : interleave(...lists)).slice(0, 30);
 }
 
@@ -402,7 +403,7 @@ export async function enrich(r, settings = {}, onProgress = () => {}) {
     else if (r.source === 'google') over(await googleDetails(r.sourceId, r.type));
     else if (r.source === 'openlibrary') merge(await openLibraryDetails(r.sourceId));
     else if (r.source === 'itunes' && r.type === 'movie') over(await itunesMovieDetails(r.sourceId, (settings.region || 'es').toLowerCase()));
-  } catch (e) { console.warn('[TVDaily] detalles', e.message); }
+  } catch (e) { console.warn('[Veoleo] detalles', e.message); }
   onProgress({ ...d });
 
   if (r.type === 'series' || r.type === 'movie') {
@@ -428,7 +429,8 @@ export async function enrich(r, settings = {}, onProgress = () => {}) {
       if (!d.genres?.length && wd.genres.length) d.genres = wd.genres;
       if (!d.runtime && wd.duration) d.runtime = wd.duration;
       // Sinopsis en español desde Wikipedia si no tenemos una en español.
-      const needEs = !d.overview || (r.source !== 'tmdb' && !/[áéíóúñ¿¡]/i.test(d.overview));
+      const needEs = LANG === 'es' && (!d.overview || (r.source !== 'tmdb' && !/[áéíóúñ¿¡]/i.test(d.overview)));
+      if (LANG === 'en' && !d.overview) { const en = await wikiSummary('en', wd.enTitle); if (en?.extract) { d.overview = en.extract; d.wikiUrl = en.url; } }
       if (needEs) {
         const es = await wikiSummary('es', wd.esTitle);
         if (es?.extract) { d.overview = es.extract; d.wikiUrl = es.url; }
@@ -478,7 +480,7 @@ export const justwatchUrl = (e) => `https://www.justwatch.com/es/buscar?q=${enco
 
 /* ───────────── Dónde verlo (TMDB · datos de JustWatch) ───────────── */
 
-export async function watchProviders(type, tmdbId, settings = {}, region = settings.region || 'ES') {
+export async function watchProviders(type, tmdbId, settings = {}, region = settings.region || DEFAULT_REGION) {
   const key = tmdbKey(settings);
   if (!key || !tmdbId) return null;
   const kind = type === 'series' ? 'tv' : 'movie';
@@ -580,12 +582,12 @@ const sameStreamer = (a = '', b = '') => {
 };
 
 export function discoverSections(settings = {}, { provider = '' } = {}) {
-  return memoize(`disc|${provider}|${settings.region || 'ES'}`, 20 * 60000, () => discoverSectionsRaw(settings, { provider }));
+  return memoize(`disc|${provider}|${settings.region || DEFAULT_REGION}`, 20 * 60000, () => discoverSectionsRaw(settings, { provider }));
 }
 async function discoverSectionsRaw(settings = {}, { provider = '' } = {}) {
   const key = tmdbKey(settings);
-  const country = (settings.region || 'ES').toLowerCase();
-  const safe = (p) => p.catch((e) => { console.warn('[TVDaily] novedades', e.message); return []; });
+  const country = (settings.region || DEFAULT_REGION).toLowerCase();
+  const safe = (p) => p.catch((e) => { console.warn('[Veoleo] novedades', e.message); return []; });
   const [prem, movies, audio, books] = await Promise.all([
     safe(memoize('prem', 30 * 60000, () => tvmazePremieres())), safe(memoize(`top-movie-${country}`, 60 * 60000, () => appleTop('movie', country))),
     safe(memoize(`top-audio-${country}`, 60 * 60000, () => appleTop('audiobook', country, 30))), safe(memoize(`top-book-${country}`, 60 * 60000, () => appleTop('book', country, 30))),
@@ -706,7 +708,7 @@ export async function getSeasons(e, settings = {}) {
       }));
       // Si TMDB no tiene sinopsis en español para algún episodio, caemos a TVMaze más abajo sólo si faltan todas.
       if (out.some((s) => s.episodes.some((x) => x.overview))) return out;
-    } catch (err) { console.warn('[TVDaily] TMDB temporadas', err.message); }
+    } catch (err) { console.warn('[Veoleo] TMDB temporadas', err.message); }
   }
   const id = await tvmazeIdFor(e);
   if (!id) return [];
@@ -786,4 +788,23 @@ export function scheduleFor(date, country = 'ES') {
       };
     }).filter(Boolean);
   });
+}
+
+/* ── imágenes panorámicas para portadas de perfil ── */
+export async function showBackdrops(tvmazeId, title = '') {
+  const imgs = await getJSON(`https://api.tvmaze.com/shows/${tvmazeId}/images`).catch(() => []);
+  return imgs.filter((i) => i.type === 'background' || i.type === 'banner')
+    .sort((a, b) => (a.type === 'background' ? 0 : 1) - (b.type === 'background' ? 0 : 1))
+    .map((i) => ({ url: https(i.resolutions?.original?.url || ''), title, wide: true })).filter((i) => i.url);
+}
+export async function backdropSearch(q) {
+  q = String(q || '').trim();
+  if (q.length < 2) return [];
+  const [shows, movies] = await Promise.all([
+    getJSON(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(q)}`).catch(() => []),
+    searchMedia('movie', q).catch(() => []),
+  ]);
+  const wide = (await Promise.all(shows.slice(0, 5).map((s) => showBackdrops(s.show.id, s.show.name)))).flat();
+  const posters = movies.filter((m) => m.cover).slice(0, 8).map((m) => ({ url: m.cover, title: m.title, wide: false }));
+  return [...wide, ...posters].slice(0, 40);
 }

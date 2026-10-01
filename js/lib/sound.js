@@ -60,7 +60,7 @@ function env(g, t, a, peak, d) {
 function play(fn) {
   if (!enabled) return;
   const c = ac(); if (!c) return;
-  try { fn(c, c.currentTime + 0.01); } catch (e) { console.warn('[TVDaily] sfx', e); }
+  try { fn(c, c.currentTime + 0.01); } catch (e) { console.warn('[Veoleo] sfx', e); }
 }
 
 export const sfx = {

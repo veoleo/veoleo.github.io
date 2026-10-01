@@ -1,4 +1,4 @@
-// Importación y exportación de datos: TV Time, Letterboxd, Goodreads, IMDb, copias TVDaily, CSV.
+// Importación y exportación de datos: TV Time, Letterboxd, Goodreads, IMDb, copias Veoleo, CSV.
 import { download, loadScript, normGenres, todayISO, uniq } from './utils.js';
 import { epCode, searchMedia, showInfo, seriesStatusFor } from './metadata.js';
 import { getNotesBulk, importEntries, saveNote, updateEntry } from './db.js';
@@ -37,14 +37,14 @@ function toCSV(rows) {
 
 /* ───────────── Exportar ───────────── */
 
-export async function exportJSON(entries, filename = 'TVDaily.json', lists = []) {
+export async function exportJSON(entries, filename = 'Veoleo.json', lists = []) {
   const notes = await getNotesBulk(entries.map((e) => e.id));
   const clean = (o) => JSON.parse(JSON.stringify(o, (k, v) => (v && typeof v === 'object' && typeof v.toMillis === 'function' ? new Date(v.toMillis()).toISOString() : v)));
-  const data = { app: 'TVDaily', version: 1, exportedAt: new Date().toISOString(), entries: clean(entries), notes: clean(notes), lists: clean(lists) };
+  const data = { app: 'Veoleo', version: 1, exportedAt: new Date().toISOString(), entries: clean(entries), notes: clean(notes), lists: clean(lists) };
   download(filename, JSON.stringify(data, null, 2), 'application/json');
 }
 
-export function exportCSV(entries, filename = 'TVDaily.csv', format = 'generic') {
+export function exportCSV(entries, filename = 'Veoleo.csv', format = 'generic') {
   let rows;
   if (format === 'letterboxd') {
     rows = entries.map((e) => ({ imdbID: e.ids?.imdb || e.imdbId || '', Title: e.title, Year: e.year || '', Rating: e.rating || '', WatchedDate: e.finishedAt || '', Rewatch: e.rewatch ? 'true' : 'false', Tags: (e.tags || []).join(', ') }));
@@ -240,10 +240,10 @@ export async function parseImport(files) {
     if (/\.zip$/i.test(f.name)) texts.push(...await readZip(f));
     else texts.push({ name: f.name, text: await f.text() });
   }
-  const json = texts.find((t) => /\.json$/i.test(t.name) && t.text.includes('"app"') && t.text.includes('TVDaily'));
+  const json = texts.find((t) => /\.json$/i.test(t.name) && t.text.includes('"app"') && (t.text.includes('Veoleo') || t.text.includes('TVDaily')));
   if (json) {
     const d = JSON.parse(json.text);
-    return { format: 'tvdaily', items: (d.entries || []).map((e) => ({ ...e, _oldId: e.id })), notes: d.notes || {}, lists: d.lists || [] };
+    return { format: 'veoleo', items: (d.entries || []).map((e) => ({ ...e, _oldId: e.id })), notes: d.notes || {}, lists: d.lists || [] };
   }
   const csvs = texts.filter((t) => /\.csv$/i.test(t.name)).map((t) => ({ name: t.name, rows: parseCSV(t.text) })).filter((x) => x.rows.length);
   if (!csvs.length) throw new Error('No se han encontrado ficheros CSV o JSON reconocibles.');
@@ -258,7 +258,7 @@ export async function parseImport(files) {
     if (formats[i] === 'imdb') items.push(...fromIMDb(c.rows));
   });
   const fmt = uniq(formats.filter(Boolean));
-  if (!items.length) throw new Error('Formato no reconocido. Admite exportaciones de TV Time, Netflix, Letterboxd, Goodreads, IMDb y copias de TVDaily.');
+  if (!items.length) throw new Error('Formato no reconocido. Admite exportaciones de TV Time, Netflix, Letterboxd, Goodreads, IMDb y copias de Veoleo.');
   // Fusiona duplicados (p. ej. diary.csv + ratings.csv de Letterboxd).
   const merged = new Map();
   for (const it of items) {
@@ -279,8 +279,8 @@ export async function runImport(parsed, existing, { skipDuplicates = true } = {}
   onProgress('Guardando', 0, clean.length);
   const ids = await importEntries(clean);
   for (let i = 0; i < todo.length; i++) {
-    const note = parsed.format === 'tvdaily' ? parsed.notes[todo[i]._oldId]?.body : todo[i]._note;
-    const pub = parsed.format === 'tvdaily' ? !!parsed.notes[todo[i]._oldId]?.isPublic : false;
+    const note = parsed.format === 'veoleo' ? parsed.notes[todo[i]._oldId]?.body : todo[i]._note;
+    const pub = parsed.format === 'veoleo' ? !!parsed.notes[todo[i]._oldId]?.isPublic : false;
     if (note) await saveNote(ids[i], note, pub && todo[i].visibility === 'public').catch(() => {});
   }
   return todo.map((e, i) => ({ ...e, id: ids[i] }));
@@ -316,7 +316,7 @@ export async function autoEnrich(items, settings, onProgress = () => {}) {
           Object.assign(e, patch);
         }
         if (e.type === 'series') await syncImportedSeries(e);
-      } catch (x) { console.warn('[TVDaily] enriquecer', e.title, x.message); }
+      } catch (x) { console.warn('[Veoleo] enriquecer', e.title, x.message); }
       onProgress(++done, total);
     }
   }));
@@ -343,7 +343,7 @@ async function syncImportedSeries(e) {
 }
 
 // Exportación en el formato de la descarga de datos de TV Time (para quien mueve su historial entre apps).
-export async function exportTVTime(entries, filename = 'TVDaily-formato-TVTime.zip') {
+export async function exportTVTime(entries, filename = 'Veoleo-formato-TVTime.zip') {
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
   const zip = new window.JSZip();
   const seen = [], followed = [], movies = [];
@@ -361,7 +361,7 @@ export async function exportTVTime(entries, filename = 'TVDaily-formato-TVTime.z
   zip.file('seen_episode.csv', '\uFEFF' + toCSV(seen));
   zip.file('followed_tv_show.csv', '\uFEFF' + toCSV(followed));
   zip.file('tracking-prod-records-movies.csv', '\uFEFF' + toCSV(movies));
-  zip.file('LEEME.txt', 'Exportado desde TVDaily con la misma estructura que la descarga de datos de TV Time\n(seen_episode.csv, followed_tv_show.csv). tv_show_id es el identificador de TheTVDB.\n');
+  zip.file('LEEME.txt', 'Exportado desde Veoleo con la misma estructura que la descarga de datos de TV Time\n(seen_episode.csv, followed_tv_show.csv). tv_show_id es el identificador de TheTVDB.\n');
   download(filename, await zip.generateAsync({ type: 'blob' }), 'application/zip');
 }
 
@@ -371,7 +371,7 @@ export const IMPORT_HELP = [
   { id: 'letterboxd', name: 'Letterboxd', how: 'letterboxd.com → Settings → Import & Export → Export your data. Sube el ZIP o diary.csv / ratings.csv / watchlist.csv.' },
   { id: 'goodreads', name: 'Goodreads', how: 'goodreads.com → My Books → Import and export → Export Library. Sube goodreads_library_export.csv.' },
   { id: 'imdb', name: 'IMDb', how: 'imdb.com → Your ratings / Watchlist → Export. Sube el CSV.' },
-  { id: 'tvdaily', name: 'TVDaily', how: 'Una copia de seguridad JSON exportada desde esta misma app (incluye notas).' },
+  { id: 'veoleo', name: 'Veoleo', how: 'Una copia de seguridad JSON exportada desde esta misma app (incluye notas).' },
 ];
 
 export { todayISO };

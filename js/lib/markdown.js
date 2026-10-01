@@ -54,15 +54,15 @@ genres: [{{genresYaml}}]
 {{#backdrop}}banner: "{{backdrop}}"
 {{/backdrop}}{{#trailerUrl}}trailer: "{{trailerUrl}}"
 {{/trailerUrl}}tags: [{{tagsYaml}}]
-cssclasses: [tvdaily, tvdaily-{{typeKey}}]
-tvdaily_id: "{{id}}"
+cssclasses: [veoleo, veoleo-{{typeKey}}]
+veoleo_id: "{{id}}"
 ---
 
 # {{emoji}} {{title}}{{#year}} ({{year}}){{/year}}
 
 {{#cover}}![portada|260]({{cover}})
 {{/cover}}
-> [!tvdaily-rating] {{stars}} · {{ratingText}}
+> [!veoleo-rating] {{stars}} · {{ratingText}}
 > **{{typeLabel}}** · {{statusLabel}}{{#finished}} · 🗓 {{finishedHuman}}{{/finished}}{{#platform}} · 📺 {{platform}}{{/platform}}{{#formatsText}}
 > {{formatsText}}{{/formatsText}}
 
@@ -97,7 +97,7 @@ tvdaily_id: "{{id}}"
 ---
 {{links}}
 
-*Exportado desde TVDaily · {{exportedAt}}*
+*Exportado desde Veoleo · {{exportedAt}}*
 `;
 
 export const PLACEHOLDERS = [
@@ -107,7 +107,7 @@ export const PLACEHOLDERS = [
   ['where', 'Dónde verlo (streaming)'], ['started', 'Inicio'], ['finished', 'Fin'], ['formatsText', 'Leído/escuchado y dónde'],
   ['note', 'Tu nota'], ['trailerUrl', 'URL tráiler'], ['trailerEmbed', 'Tráiler embebido'], ['soundtrackBlock', 'Banda sonora'],
   ['episodesSection', 'Episodios con sinopsis'], ['episodesProgress', 'Progreso episodios'], ['nextEpisode', 'Próximo episodio'],
-  ['ficha', 'Ficha técnica'], ['links', 'Enlaces'], ['tagsYaml', 'Etiquetas (YAML)'], ['id', 'ID TVDaily'],
+  ['ficha', 'Ficha técnica'], ['links', 'Enlaces'], ['tagsYaml', 'Etiquetas (YAML)'], ['id', 'ID Veoleo'],
 ];
 
 /* ───────────── Contexto de una entrada ───────────── */
@@ -155,7 +155,7 @@ function soundtrackBlock(e) {
   if (!s && !e.composer) return '';
   const lines = [];
   if (s) {
-    lines.push(`> [!tvdaily-music] ${s.album}`);
+    lines.push(`> [!veoleo-music] ${s.album}`);
     lines.push(`> **${s.artist}**${s.year ? ' · ' + s.year : ''}${s.url ? ` · [Escuchar en Apple Music](${s.url})` : ''}`);
     if (s.artwork) lines.push(`> ![|120](${s.artwork})`);
     if (s.tracks?.length) {
@@ -166,7 +166,7 @@ function soundtrackBlock(e) {
       }
     }
   }
-  if (e.composer) lines.push(s ? '>' : '> [!tvdaily-music] Banda sonora', `> 🎼 Compositor: **${e.composer}**`);
+  if (e.composer) lines.push(s ? '>' : '> [!veoleo-music] Banda sonora', `> 🎼 Compositor: **${e.composer}**`);
   return lines.join('\n');
 }
 
@@ -179,7 +179,7 @@ export function episodesBlock(e, seasons, mode = 'all') {
     if (!eps.length) continue;
     const seen = s.episodes.filter((x) => watched.has(x.code)).length;
     const full = seen === s.episodes.length;
-    out.push(`> [!tvdaily-season]${full ? '-' : '+'} ${s.name} · ${seen}/${s.episodes.length} vistos`);
+    out.push(`> [!veoleo-season]${full ? '-' : '+'} ${s.name} · ${seen}/${s.episodes.length} vistos`);
     for (const ep of eps) {
       out.push(`> - [${watched.has(ep.code) ? 'x' : ' '}] **${ep.code} · ${ep.name}**${ep.airdate ? ` — 📅 ${ep.airdate}` : ''}${ep.runtime ? ` · ${ep.runtime} min` : ''}`);
       if (ep.overview) out.push(`>   ${ep.overview.replace(/\n+/g, ' ')}`);
@@ -193,7 +193,7 @@ export function entryContext(e, note, { seasons = null, episodesMode = 'all' } =
   const T = TYPES[e.type] || TYPES.series;
   const yt = e.trailer?.youtube;
   const trailerUrl = yt ? `https://www.youtube.com/watch?v=${yt}` : e.trailer?.url || '';
-  const tags = ['tvdaily', `tvdaily/${e.type}`, `estado/${tagify(statusLabel(e.status, e.type))}`, ...(e.genres || []).map((g) => `genero/${tagify(g)}`), ...(e.tags || []).map(tagify)];
+  const tags = ['veoleo', `veoleo/${e.type}`, `estado/${tagify(statusLabel(e.status, e.type))}`, ...(e.genres || []).map((g) => `genero/${tagify(g)}`), ...(e.tags || []).map(tagify)];
   const watched = (e.watchedEpisodes || []).length;
   const totalEps = seasons ? seasons.reduce((a, s) => a + s.episodes.length, 0) : e.episodes || 0;
   const links = [
@@ -265,18 +265,18 @@ async function pool(items, n, fn) {
 export function indexNote(entries, lists = []) {
   const byType = (t) => entries.filter((e) => e.type === t);
   const lines = [
-    '---', 'cssclasses: [tvdaily, tvdaily-index]', 'tags: [tvdaily]', '---', '',
-    '# 🎬 TVDaily · Índice', '',
-    `> [!tvdaily-rating] ${entries.length} entradas · exportado el ${new Date().toLocaleDateString('es-ES')}`,
+    '---', 'cssclasses: [veoleo, veoleo-index]', 'tags: [veoleo]', '---', '',
+    '# 🎬 Veoleo · Índice', '',
+    `> [!veoleo-rating] ${entries.length} entradas · exportado el ${new Date().toLocaleDateString('es-ES')}`,
     '> Las tablas dinámicas necesitan el plugin **Dataview**. Debajo tienes también un índice estático.', '',
   ];
   for (const t of Object.keys(FOLDERS)) {
     if (!byType(t).length) continue;
     lines.push(`## ${TYPES[t].icon} ${TYPES[t].plural}`, '', '```dataview',
       'TABLE WITHOUT ID ("![|60](" + cover + ")") AS " ", file.link AS Título, year AS Año, rating AS "★", status AS Estado, finished AS Fin',
-      `FROM #tvdaily/${t}`, 'SORT rating DESC, finished DESC', '```', '');
+      `FROM #veoleo/${t}`, 'SORT rating DESC, finished DESC', '```', '');
   }
-  lines.push('## 📅 Por año', '', '```dataview', 'TABLE WITHOUT ID file.link AS Título, type AS Tipo, rating AS "★"', 'FROM #tvdaily', 'WHERE finished', 'GROUP BY dateformat(date(finished), "yyyy") AS Año', '```', '');
+  lines.push('## 📅 Por año', '', '```dataview', 'TABLE WITHOUT ID file.link AS Título, type AS Tipo, rating AS "★"', 'FROM #veoleo', 'WHERE finished', 'GROUP BY dateformat(date(finished), "yyyy") AS Año', '```', '');
   lines.push('## 🗂 Índice estático', '');
   for (const t of Object.keys(FOLDERS)) {
     const list = byType(t); if (!list.length) continue;
@@ -295,11 +295,11 @@ export function indexNote(entries, lists = []) {
 
 export function listNote(list, items, pattern) {
   const lines = [
-    '---', `title: "${yq(list.name)}"`, 'tags: [tvdaily, tvdaily/lista]', 'cssclasses: [tvdaily, tvdaily-list]', '---', '',
+    '---', `title: "${yq(list.name)}"`, 'tags: [veoleo, veoleo/lista]', 'cssclasses: [veoleo, veoleo-list]', '---', '',
     `# ${list.emoji || '📋'} ${list.name}`, '',
   ];
   if (list.description) lines.push(`> ${list.description}`, '');
-  if (list.rulesText) lines.push(`> [!tvdaily-season] Lista automática`, `> ${list.rulesText}`, '');
+  if (list.rulesText) lines.push(`> [!veoleo-season] Lista automática`, `> ${list.rulesText}`, '');
   for (const e of items) {
     lines.push(`- [[${FOLDERS[e.type]}/${filenameFor(e, pattern).replace(/\.md$/, '')}|${e.title}]]${e.year ? ` (${e.year})` : ''} · ${TYPES[e.type]?.icon} · ${starsText(e.rating)}`);
   }
@@ -307,30 +307,30 @@ export function listNote(list, items, pattern) {
 }
 
 // Exportación masiva: .zip con carpetas por tipo, índice Dataview, listas y snippet CSS.
-export async function bulkExportZip(entries, notesById, settings = {}, lists = [], onProgress = () => {}, zipName = 'TVDaily-Obsidian.zip') {
+export async function bulkExportZip(entries, notesById, settings = {}, lists = [], onProgress = () => {}, zipName = 'Veoleo-Obsidian.zip') {
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
   const zip = new window.JSZip();
-  const root = zip.folder('TVDaily');
+  const root = zip.folder('Veoleo');
   let done = 0;
   await pool(entries, 4, async (e) => {
     const md = await entryToMarkdown(e, notesById[e.id], settings);
     root.folder(FOLDERS[e.type] || 'Otros').file(filenameFor(e, settings.filenamePattern), md);
     onProgress(++done, entries.length);
   });
-  root.file('TVDaily · Índice.md', indexNote(entries, lists));
+  root.file('Veoleo · Índice.md', indexNote(entries, lists));
   for (const l of lists) {
     if (!l.items?.length) continue;
     root.folder('Listas').file(safeFilename(l.name) + '.md', listNote(l, l.items, settings.filenamePattern));
   }
-  root.file('_snippet-tvdaily.css', OBSIDIAN_CSS);
+  root.file('_snippet-veoleo.css', OBSIDIAN_CSS);
   root.file('LEEME.md', README_EXPORT);
   const blob = await zip.generateAsync({ type: 'blob' });
   download(zipName, blob, 'application/zip');
 }
 
 // Exportación masiva en un único .md.
-export async function bulkExportSingle(entries, notesById, settings = {}, onProgress = () => {}, name = 'TVDaily.md') {
-  const parts = [`# 🎬 TVDaily · ${entries.length} entradas\n\n*Exportado el ${new Date().toLocaleString('es-ES')}*\n`];
+export async function bulkExportSingle(entries, notesById, settings = {}, onProgress = () => {}, name = 'Veoleo.md') {
+  const parts = [`# 🎬 Veoleo · ${entries.length} entradas\n\n*Exportado el ${new Date().toLocaleString('es-ES')}*\n`];
   let done = 0;
   const mds = await pool(entries, 4, async (e) => {
     const md = await entryToMarkdown(e, notesById[e.id], settings);
@@ -343,43 +343,43 @@ export async function bulkExportSingle(entries, notesById, settings = {}, onProg
 
 export const README_EXPORT = `# Cómo usar esta exportación en Obsidian
 
-1. Copia la carpeta **TVDaily** dentro de tu bóveda.
-2. Copia \`_snippet-tvdaily.css\` a \`.obsidian/snippets/tvdaily.css\` y actívalo en *Ajustes → Apariencia → Fragmentos CSS*.
+1. Copia la carpeta **Veoleo** dentro de tu bóveda.
+2. Copia \`_snippet-veoleo.css\` a \`.obsidian/snippets/veoleo.css\` y actívalo en *Ajustes → Apariencia → Fragmentos CSS*.
 3. (Opcional) Instala **Dataview** para las tablas dinámicas del índice y **Banners** para usar el fondo como banner.
 `;
 
 // Snippet CSS para que las notas se vean con estética cómic en Obsidian.
-export const OBSIDIAN_CSS = `/* TVDaily · snippet para Obsidian */
-.tvdaily {
-  --tvd-ink: #16141f; --tvd-paper: #fff8ec; --tvd-red: #f2545b; --tvd-yellow: #f9c846;
-  --tvd-teal: #2bb3a3; --tvd-blue: #3b6cf6; --tvd-pink: #ee7ba8; --tvd-purple: #8e6cef;
+export const OBSIDIAN_CSS = `/* Veoleo · snippet para Obsidian */
+.veoleo {
+  --vl-ink: #16141f; --vl-paper: #fff8ec; --vl-red: #f2545b; --vl-yellow: #f9c846;
+  --vl-teal: #2bb3a3; --vl-blue: #3b6cf6; --vl-pink: #ee7ba8; --vl-purple: #8e6cef;
 }
-.tvdaily .inline-title, .tvdaily h1 {
+.veoleo .inline-title, .veoleo h1 {
   font-family: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
   font-weight: 800; font-size: 2.6em; letter-spacing: -0.02em; line-height: 1.02;
 }
-.tvdaily h2 { font-weight: 800; border-bottom: 3px solid var(--tvd-ink); padding-bottom: .15em; }
-.theme-dark .tvdaily h2 { border-color: currentColor; }
-.tvdaily img[alt="portada"] {
-  float: right; margin: 0 0 1em 1.2em; border: 3px solid var(--tvd-ink); border-radius: 12px;
-  box-shadow: 6px 6px 0 var(--tvd-ink); transform: rotate(1.5deg);
+.veoleo h2 { font-weight: 800; border-bottom: 3px solid var(--vl-ink); padding-bottom: .15em; }
+.theme-dark .veoleo h2 { border-color: currentColor; }
+.veoleo img[alt="portada"] {
+  float: right; margin: 0 0 1em 1.2em; border: 3px solid var(--vl-ink); border-radius: 12px;
+  box-shadow: 6px 6px 0 var(--vl-ink); transform: rotate(1.5deg);
 }
-.tvdaily .callout {
-  border: 3px solid var(--tvd-ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--tvd-ink);
+.veoleo .callout {
+  border: 3px solid var(--vl-ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--vl-ink);
   mix-blend-mode: normal;
 }
-.callout[data-callout="tvdaily-rating"] { --callout-color: 249, 200, 70; --callout-icon: lucide-star; background: rgb(249 200 70 / .25); }
-.callout[data-callout="tvdaily-rating"] .callout-title-inner { font-size: 1.5em; letter-spacing: .08em; }
-.callout[data-callout="tvdaily-music"] { --callout-color: 238, 123, 168; --callout-icon: lucide-music; }
-.callout[data-callout="tvdaily-season"] { --callout-color: 59, 108, 246; --callout-icon: lucide-tv; }
-.tvdaily .callout[data-callout="abstract"] { --callout-color: 43, 179, 163; }
-.tvdaily .callout[data-callout="info"] { --callout-color: 142, 108, 239; }
-.tvdaily table { border: 2px solid var(--tvd-ink); border-radius: 10px; overflow: hidden; }
-.tvdaily .task-list-item-checkbox:checked { background-color: var(--tvd-teal); border-color: var(--tvd-ink); }
-.tvdaily-series h1 { color: var(--tvd-blue); }
-.tvdaily-movie h1 { color: var(--tvd-red); }
-.tvdaily-book h1 { color: #d9a400; }
-.tvdaily-audiobook h1 { color: var(--tvd-teal); }
+.callout[data-callout="veoleo-rating"] { --callout-color: 249, 200, 70; --callout-icon: lucide-star; background: rgb(249 200 70 / .25); }
+.callout[data-callout="veoleo-rating"] .callout-title-inner { font-size: 1.5em; letter-spacing: .08em; }
+.callout[data-callout="veoleo-music"] { --callout-color: 238, 123, 168; --callout-icon: lucide-music; }
+.callout[data-callout="veoleo-season"] { --callout-color: 59, 108, 246; --callout-icon: lucide-tv; }
+.veoleo .callout[data-callout="abstract"] { --callout-color: 43, 179, 163; }
+.veoleo .callout[data-callout="info"] { --callout-color: 142, 108, 239; }
+.veoleo table { border: 2px solid var(--vl-ink); border-radius: 10px; overflow: hidden; }
+.veoleo .task-list-item-checkbox:checked { background-color: var(--vl-teal); border-color: var(--vl-ink); }
+.veoleo-series h1 { color: var(--vl-blue); }
+.veoleo-movie h1 { color: var(--vl-red); }
+.veoleo-book h1 { color: #d9a400; }
+.veoleo-audiobook h1 { color: var(--vl-teal); }
 `;
 
 export function sortForExport(entries) {

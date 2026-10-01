@@ -7,7 +7,7 @@ import {
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot,
-  query, where, orderBy, limit, serverTimestamp, getCountFromServer, writeBatch,
+  query, where, orderBy, limit, serverTimestamp, getCountFromServer, writeBatch, increment, runTransaction,
 } from 'firebase/firestore';
 import { firebaseConfig } from '../config.js';
 import { getState, setState } from './store.js';
@@ -170,13 +170,13 @@ export function watchMine(uid) {
   const unsubs = [];
   unsubs.push(onSnapshot(query(collection(db, 'entries'), where('ownerId', '==', uid)), (snap) => {
     setState({ entries: snap.docs.map(withId), entriesReady: true });
-  }, (e) => { console.error('[TVDaily] entries', e); setState({ entriesReady: true }); }));
+  }, (e) => { console.error('[Veoleo] entries', e); setState({ entriesReady: true }); }));
   unsubs.push(onSnapshot(query(collection(db, 'lists'), where('ownerId', '==', uid)), (snap) => {
     setState({ lists: snap.docs.map(withId) });
-  }, (e) => console.error('[TVDaily] lists', e)));
+  }, (e) => console.error('[Veoleo] lists', e)));
   unsubs.push(onSnapshot(query(collection(db, 'follows'), where('followerId', '==', uid)), (snap) => {
     setState({ following: snap.docs.map((d) => d.data().followingId) });
-  }, (e) => console.error('[TVDaily] follows', e)));
+  }, (e) => console.error('[Veoleo] follows', e)));
   return () => unsubs.forEach((u) => u());
 }
 
@@ -250,7 +250,7 @@ export async function exploreEntries(n = 48) {
     return (await getDocs(q)).docs.map(withId);
   } catch (e) {
     // Sin índice compuesto todavía: pedimos sin ordenar y ordenamos en cliente.
-    console.warn('[TVDaily] explore sin índice', e?.message);
+    console.warn('[Veoleo] explore sin índice', e?.message);
     const q = query(collection(db, 'entries'), where('visibility', '==', 'public'), limit(n * 3));
     return (await getDocs(q)).docs.map(withId);
   }
@@ -357,4 +357,90 @@ export async function importEntries(items) {
     await b.commit();
   }
   return ids;
+}
+
+/* ───────────── Publicaciones (estado, progreso y conversación) ───────────── */
+
+const POST_MAX = 500;
+function postAuthor() {
+  const p = getState().profile || {};
+  return { authorName: p.displayName || '', authorHandle: p.handle || '', authorPhoto: p.photoURL || '' };
+}
+// Instantánea de la entrada que acompaña a la publicación (lo que estás viendo/leyendo y por dónde vas).
+export function entrySnapshot(e, pct) {
+  if (!e) return null;
+  const watched = e.watchedEpisodes || [];
+  const last = [...watched].sort().pop() || '';
+  const total = Number(e.episodes) || 0;
+  const done = e.type === 'series' ? watched.length : 0;
+  const p = e.type === 'series' ? (total ? Math.round((done / total) * 100) : null)
+    : pct != null ? Math.max(0, Math.min(100, Math.round(pct))) : (e.status === 'completed' ? 100 : (e.progressPct ?? null));
+  return {
+    id: e.id, title: e.title, type: e.type, year: e.year || null, cover: e.cover || '', backdrop: e.backdrop || '',
+    status: e.status || '', rating: e.rating || 0, progress: { pct: p, done, total, last },
+  };
+}
+export async function createPost({ text = '', entry = null, spoiler = false }) {
+  const uid = uidOrThrow();
+  const body = String(text).trim().slice(0, POST_MAX);
+  if (!body && !entry) throw new Error('Escribe algo o elige un título');
+  const ref = await addDoc(collection(db, 'posts'), clean({
+    authorId: uid, ...postAuthor(), text: body, entry, spoiler: !!spoiler,
+    likeCount: 0, replyCount: 0, createdAt: serverTimestamp(),
+  }));
+  return ref.id;
+}
+export const deletePost = (id) => deleteDoc(doc(db, 'posts', id));
+export async function getPost(id) {
+  const s = await getDoc(doc(db, 'posts', id));
+  return s.exists() ? withId(s) : null;
+}
+export async function latestPosts(n = 60) {
+  const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(n));
+  return (await getDocs(q)).docs.map(withId);
+}
+const byNewest = (a, b) => (b.createdAt?.toMillis?.() || Date.now()) - (a.createdAt?.toMillis?.() || Date.now());
+export async function postsOf(uid, n = 100) {
+  const q = query(collection(db, 'posts'), where('authorId', '==', uid), limit(n));
+  return (await getDocs(q)).docs.map(withId).sort(byNewest);
+}
+export async function postsFrom(uids) {
+  const all = [];
+  for (let i = 0; i < uids.length; i += 30) {
+    const q = query(collection(db, 'posts'), where('authorId', 'in', uids.slice(i, i + 30)), limit(150));
+    all.push(...(await getDocs(q)).docs.map(withId));
+  }
+  return all.sort(byNewest);
+}
+export async function myPostLikes(postIds) {
+  const uid = uidOrThrow();
+  const res = await Promise.all(postIds.map((id) => getDoc(doc(db, 'posts', id, 'likes', uid)).then((s) => s.exists()).catch(() => false)));
+  return new Set(postIds.filter((_, i) => res[i]));
+}
+export async function likePost(id, on) {
+  const uid = uidOrThrow();
+  const likeRef = doc(db, 'posts', id, 'likes', uid);
+  await runTransaction(db, async (tx) => {
+    const ex = await tx.get(likeRef);
+    if (on === ex.exists()) return;
+    if (on) tx.set(likeRef, { at: serverTimestamp() }); else tx.delete(likeRef);
+    tx.update(doc(db, 'posts', id), { likeCount: increment(on ? 1 : -1) });
+  });
+}
+export function watchReplies(postId, cb, onErr) {
+  const q = query(collection(db, 'posts', postId, 'replies'), orderBy('createdAt', 'asc'), limit(200));
+  return onSnapshot(q, (s) => cb(s.docs.map(withId)), onErr);
+}
+export async function addReply(postId, text) {
+  const uid = uidOrThrow();
+  const b = writeBatch(db);
+  b.set(doc(collection(db, 'posts', postId, 'replies')), { authorId: uid, ...postAuthor(), text: String(text).trim().slice(0, 999), createdAt: serverTimestamp() });
+  b.update(doc(db, 'posts', postId), { replyCount: increment(1) });
+  await b.commit();
+}
+export async function deleteReply(postId, rid) {
+  const b = writeBatch(db);
+  b.delete(doc(db, 'posts', postId, 'replies', rid));
+  b.update(doc(db, 'posts', postId), { replyCount: increment(-1) });
+  await b.commit();
 }

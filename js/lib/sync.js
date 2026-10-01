@@ -8,7 +8,7 @@ import { todayISO } from './utils.js';
 async function pool(items, n, fn) {
   const queue = [...items];
   await Promise.all(Array.from({ length: Math.min(n, queue.length) }, async () => {
-    while (queue.length) { const it = queue.shift(); try { await fn(it); } catch (e) { console.warn('[TVDaily] sync', e.message); } }
+    while (queue.length) { const it = queue.shift(); try { await fn(it); } catch (e) { console.warn('[Veoleo] sync', e.message); } }
   }));
 }
 
