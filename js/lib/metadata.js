@@ -863,3 +863,14 @@ export function overviewFor(e) {
     return en?.extract ? { overview: en.extract, wikiUrl: en.url } : null;
   });
 }
+
+// Al pasar una serie a «Al día» o «Vista»: todos los episodios ya emitidos, marcados.
+export async function allAiredPatch(e) {
+  const info = await showInfo(e).catch(() => null);
+  if (!info) return null;
+  const set = new Set([...(e.watchedEpisodes || []), ...info.aired.map((x) => x.code)]);
+  return {
+    watchedEpisodes: [...set].sort(), episodes: info.total, showStatus: info.status, nextEpisode: info.next || null,
+    ids: { ...(e.ids || {}), tvmaze: info.tvmazeId, tvdb: e.ids?.tvdb || info.tvdbId || '', imdb: e.ids?.imdb || info.imdbId || '' },
+  };
+}

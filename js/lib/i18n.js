@@ -292,6 +292,13 @@ const EN = {
 
   'Movida a tu lista Abandonadas': 'Moved to your Dropped list', 'Abandonar serie': 'Drop series',
 
+  'No lo sé · Otros años': "Don't know · Other years", 'Otro año…': 'Another year…', 'Otro año': 'Another year', 'Otros años': 'Other years', 'En «Otros años»': 'In "Other years"',
+  '¿Qué año lo viste?': 'What year did you watch it?', '¿Qué año lo terminaste?': 'What year did you finish it?', '¿Cuándo lo dejaste?': 'When did you drop it?',
+  'Irá a «Otros años»: cuenta en tu diario pero no en las listas ni retos de un año concreto.': 'It will go to "Other years": it counts in your diary but not in lists or challenges for a specific year.',
+  'Movida a «Otros años»': 'Moved to "Other years"', 'Año actualizado': 'Year updated',
+
+  'Sonido activado': 'Sound on', 'Sonido silenciado': 'Sound muted',
+
   // géneros
   'Acción': 'Action', 'Acción y aventura': 'Action & adventure', 'Aventura': 'Adventure', 'Animación': 'Animation', 'Anime': 'Anime', 'Biografía': 'Biography', 'Comedia': 'Comedy',
   'Crimen': 'Crime', 'Documental': 'Documentary', 'Drama': 'Drama', 'Familia': 'Family', 'Fantasía': 'Fantasy', 'Historia': 'History', 'Terror': 'Horror', 'Musical': 'Musical',
@@ -303,6 +310,7 @@ const EN = {
 };
 
 const PATTERNS = [
+  [/^Este año · (\d{4})$/, 'This year · $1'], [/^Año · (\d{4})$/, 'Year · $1'], [/^Quitar de (\d{4})$/, 'Remove from $1'],
   [/^Ver las (\d+)$/, 'See all $1'],
   [/^¿Abandonar (.+)\? Pasará a tu lista Abandonadas y dejará de salir aquí\.$/, 'Drop $1? It will move to your Dropped list and stop showing here.'],
   [/^Fechas actualizadas en (\d+)$/, 'Dates updated on $1'],

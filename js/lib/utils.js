@@ -80,8 +80,11 @@ export function timeAgo(ms) {
 
 // Año en que cuenta una entrada para filtros/listas: fecha de fin, si no la de inicio, si no la de alta.
 export function entryYear(e) {
+  if (e.yearUnknown) return null; // «Otros años»: visto, pero no se sabe cuándo
+  if (e.watchedYear) return Number(e.watchedYear);
   const d = e.finishedAt || (e.status === 'completed' ? e.lastWatchedAt : '') || e.startedAt;
   if (d) return Number(String(d).slice(0, 4));
+  if (e.source?.name === 'import') return null; // importado sin fechas: no se inventa el año de importación
   const c = toMillis(e.createdAt);
   return c ? new Date(c).getFullYear() : null;
 }
@@ -124,8 +127,11 @@ export function matchRules(e, r = {}) {
   if (r.types?.length && !r.types.includes(e.type)) return false;
   if (r.statuses?.length && !r.statuses.includes(e.status)) return false;
   const y = entryYear(e);
-  if (r.yearFrom && (!y || y < Number(r.yearFrom))) return false;
-  if (r.yearTo && (!y || y > Number(r.yearTo))) return false;
+  if (r.yearFrom === 'unknown' || r.yearTo === 'unknown') { if (y || e.status === 'planned') return false; }
+  else {
+    if (r.yearFrom && (!y || y < Number(r.yearFrom))) return false;
+    if (r.yearTo && (!y || y > Number(r.yearTo))) return false;
+  }
   if (r.minRating && (Number(e.rating) || 0) < Number(r.minRating)) return false;
   if (r.genres?.length && !(e.genres || []).some((g) => r.genres.includes(g))) return false;
   if (r.formats?.length) {
