@@ -110,10 +110,12 @@ function Header({ route, onPalette }) {
       <a class="logo" href="#/"><i></i><span class="lt">Veoleo</span></a>
       <nav class="nav">${NAV.map(([k, path, label]) => html`<a key=${k} href=${'#/' + path} class=${active === k ? 'on' : ''} onMouseEnter=${() => sfx.hover()}>${label}</a>`)}</nav>
       <div class="header-actions">
-        <button class="btn sm glass hide-sm" onClick=${onPalette} title="Buscar (⌘K)"><${Icon} name="search" size=${14} /> Buscar <span class="kbd">⌘K</span></button>
-        <a class="btn sm" href="#/search"><${Icon} name="plus" size=${14} /><span class="hide-sm">Añadir</span></a>
+        <button class="btn sm glass icon-sm" onClick=${onPalette} title="Buscar (⌘K)" aria-label="Buscar"><${Icon} name="search" size=${15} /></button>
+        <a class="btn sm glass hide-sm" href="#/data?go=import" title="Importar historial"><${Icon} name="upload" size=${14} /> Importar</a>
+        <a class="btn sm glass hide-sm" href="#/data?go=export" title="Exportar"><${Icon} name="download" size=${14} /> Exportar</a>
+        <a class="btn sm" href="#/search" title="Añadir"><${Icon} name="plus" size=${14} /><span class="add-lbl">Añadir</span></a>
         <${LangToggle} />
-        <button class="btn icon glass hide-sm" title=${snd ? 'Silenciar' : 'Activar sonido'} aria-label="Sonido" onClick=${() => { setSound(!snd); setSnd(!snd); }}><${Icon} name=${snd ? 'sound' : 'mute'} /></button>
+        <button class="btn icon glass snd" title=${snd ? 'Silenciar' : 'Activar sonido'} aria-label="Sonido" onClick=${() => { setSound(!snd); setSnd(!snd); }}><${Icon} name=${snd ? 'sound' : 'mute'} /></button>
         <div style="position:relative">
           <${Avatar} user=${profile || { displayName: user?.email }} size=${38} onClick=${() => { setMenu(!menu); sfx.click(); }} />
           ${menu && html`<div class="menu glass">
@@ -134,8 +136,9 @@ function Header({ route, onPalette }) {
 
 // Móvil: barra inferior con lo esencial y «Más» con todas las secciones.
 const MORE = [
+  ['data?go=import', 'Importar', 'upload'], ['data?go=export', 'Exportar', 'download'],
   ['discover', 'Novedades', 'spark'], ['news', 'Noticias', 'news'], ['explore', 'Comunidad', 'users'], ['lists', 'Listas', 'list'],
-  ['challenges', 'Retos', 'trophy'], ['stats', 'Estadísticas', 'chart'], ['data', 'Importar y exportar', 'database'],
+  ['challenges', 'Retos', 'trophy'], ['stats', 'Estadísticas', 'chart'],
   ['settings', 'Ajustes', 'settings'], ['about', 'Qué es Veoleo', 'info'],
 ];
 function MoreSheet({ onClose }) {
@@ -162,7 +165,7 @@ function BottomNav({ route }) {
   const [more, setMore] = useState(false);
   useEffect(() => setMore(false), [route.parts.join('/')]);
   const items = [['home', '', 'Inicio', 'home'], ['guide', 'guide', 'Guía', 'guide'], ['search', 'search', 'Buscar', 'search'], ['library', 'library', 'Biblioteca', 'grid']];
-  const inMore = MORE.some(([p]) => p === route.name) || route.name === 'u';
+  const inMore = MORE.some(([p]) => p.split('?')[0] === route.name) || route.name === 'u';
   return html`<nav class="bottom-nav">${items.map(([k, path, label, icon]) => html`
     <a key=${k} href=${'#/' + path} class=${route.name === k ? 'on' : ''}><${Icon} name=${icon} />${label}</a>`)}
     <button class=${inMore || more ? 'on' : ''} onClick=${() => { setMore(!more); sfx.click(); }} aria-expanded=${more}><${Icon} name="menu" />Más</button>
