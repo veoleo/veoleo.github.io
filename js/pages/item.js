@@ -8,7 +8,7 @@ import { NoteEditor, LikeButton, Comments } from '../components/social.js';
 import { EntryForm } from '../components/entry-form.js';
 import { watchEntry, updateEntry, deleteEntry, getNote } from '../lib/db.js';
 import { useStore, toast } from '../lib/store.js';
-import { enrich, deciderUrl, justwatchUrl, nextEpisodeOf } from '../lib/metadata.js';
+import { enrich, deciderUrl, justwatchUrl, nextEpisodeOf, overviewFor } from '../lib/metadata.js';
 import { exportEntry, entryToMarkdown } from '../lib/markdown.js';
 import { TYPES, humanDate, fmtDuration } from '../lib/utils.js';
 import { sfx } from '../lib/sound.js';
@@ -33,6 +33,21 @@ export function ItemPage({ id }) {
     return watchEntry(id, setRemote, () => setRemote(null));
   }, [id, !!own]);
   useEffect(() => { sfx.open(); }, [id]);
+  // Sin sinopsis general (títulos importados): se busca sola y, si es tuya, se guarda.
+  const [ov, setOv] = useState(null);
+  const base = own || remote;
+  useEffect(() => {
+    setOv(null);
+    if (!base || base.overview) return;
+    let alive = true;
+    setOv('loading');
+    overviewFor(base).then((r) => {
+      if (!alive) return;
+      setOv(r?.overview ? r : 'none');
+      if (r?.overview && own) updateEntry(own.id, r).catch(() => {});
+    }).catch(() => alive && setOv('none'));
+    return () => { alive = false; };
+  }, [id, !!base, !!base?.overview]);
 
   const e = own || remote;
   const mine = !!own;
@@ -128,7 +143,9 @@ export function ItemPage({ id }) {
         <div class="stack" style="--g:88px">
           <section id="s-resumen" class="anchor">
             ${e.tagline && html`<p class="h3" style="margin:0 0 20px;text-transform:none;font-stretch:100%">“${e.tagline}”</p>`}
-            ${e.overview ? html`<p class="prose" style="margin:0;font-size:1.15rem;color:var(--text)">${e.overview}</p>` : html`<p class="muted">Sin sinopsis.${mine ? ' Pulsa actualizar para buscarla.' : ''}</p>`}
+            ${(e.overview || ov?.overview) ? html`<p class="prose" style="margin:0;font-size:1.15rem;color:var(--text)">${e.overview || ov.overview}</p>`
+              : ov === 'loading' ? html`<p class="muted">Buscando sinopsis…</p>`
+              : html`<p class="muted">Sin sinopsis.${mine ? ' Pulsa actualizar para buscarla.' : ''}</p>`}
             ${(e.type === 'audiobook' || e.audioPreview) && html`<div style="margin-top:28px"><${AudioPreview} src=${e.audioPreview} /></div>`}
           </section>
 

@@ -61,7 +61,7 @@ export function AuthPage() {
               .map((t) => html`<span>${t}</span>`)}
           </div>
         </div>
-        <div class="row between"><a class="label" href="#/about" style="text-decoration:none">Qué puedes hacer en Veoleo →</a><${SupportButton} size="sm" /></div>
+        <div class="row between"><a class="label" href="#/about" style="text-decoration:none">Qué puedes hacer en Veoleo →</a><${SupportButton} quiet /></div>
       </section>
 
       <form class="form" onSubmit=${submit}>
