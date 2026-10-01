@@ -2,7 +2,9 @@
 // la seguridad la imponen las reglas de Firestore (firestore.rules).
 export const firebaseConfig = {
   apiKey: 'AIzaSyC9Ki3txnwOY_gRy4WrRCeKzjewyLdMoLM',
-  authDomain: 'tvdaily-7d988.firebaseapp.com',
+  // En veoleo.github.io el inicio de sesión se sirve desde el propio dominio (/__/auth/), así
+  // iOS (app instalada en la pantalla de inicio) no bloquea la sesión por ser de otro dominio.
+  authDomain: typeof location !== 'undefined' && location.hostname === 'veoleo.github.io' ? 'veoleo.github.io' : 'tvdaily-7d988.firebaseapp.com',
   projectId: 'tvdaily-7d988',
   storageBucket: 'tvdaily-7d988.firebasestorage.app',
   messagingSenderId: '659329453979',
