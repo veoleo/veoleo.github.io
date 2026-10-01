@@ -1,5 +1,6 @@
 // Ficha de una entrada: héroe, estrellas, episodios, nota, tráiler, banda sonora, reparto y comentarios.
 import { html, useState, useEffect } from 'preact-standalone';
+import { ComposerModal } from '../components/posts.js';
 import { Stars, Cover, BgImg, TypeBadge, StatusBadge, Providers, Avatar, Spinner, Modal, Icon, Scramble, shareLink } from '../components/ui.js';
 import { Trailer, Soundtrack, CastRow, AudioPreview } from '../components/media.js';
 import { EpisodesPanel } from '../components/episodes.js';
@@ -24,6 +25,7 @@ export function ItemPage({ id }) {
   const [confirmDel, setConfirmDel] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [sec, setSec] = useState('resumen');
+  const [post, setPost] = useState(false);
 
   useEffect(() => {
     if (own) return;
@@ -73,7 +75,7 @@ export function ItemPage({ id }) {
     } catch (x) { toast('No se pudo actualizar: ' + x.message, 'err'); }
     finally { setRefreshing(false); }
   }
-  const share = () => shareLink({ title: e.title, text: `${e.title} en TVDaily`, url: `${location.origin}${location.pathname}#/item/${e.id}` });
+  const share = () => shareLink({ title: e.title, text: `${e.title} en Veoleo`, url: `${location.origin}${location.pathname}#/item/${e.id}` });
 
   const sections = [
     ['resumen', 'Resumen'],
@@ -107,6 +109,7 @@ export function ItemPage({ id }) {
               <${Stars} value=${e.rating || 0} onChange=${mine ? rate : null} size=${34} />
               <div class="row" style="--g:10px">
                 ${mine && html`<button class="btn" onClick=${() => setEdit(true)}><${Icon} name="edit" /> Editar</button>`}
+                ${mine && html`<button class="btn glass" onClick=${() => setPost(true)} title="Compartir en Comunidad"><${Icon} name="chat" /> Publicar</button>`}
                 <${LikeButton} e=${e} />
                 <button class="btn glass" onClick=${share} title="Compartir"><${Icon} name="share" /> Compartir</button>
                 <button class="btn glass" onClick=${() => doExport(false)} title="Exportar a Markdown"><${Icon} name="download" /> .md</button>
@@ -204,6 +207,7 @@ export function ItemPage({ id }) {
       </div>
 
       ${edit && html`<${EntryForm} draft=${e} onClose=${() => setEdit(false)} />`}
+      ${post && html`<${ComposerModal} entry=${e} onClose=${() => setPost(false)} />`}
       ${confirmDel && html`<${Modal} kicker="Eliminar" title=${e.title} color="var(--red)" width=${560} onClose=${() => setConfirmDel(false)}>
         <p class="lead" style="margin-top:0">Se borrará de tu diario junto con su nota. No se puede deshacer.</p>
         <div class="row between" style="margin-top:28px"><button class="btn ghost" onClick=${() => setConfirmDel(false)}>Cancelar</button>

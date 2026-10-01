@@ -1,5 +1,5 @@
 // Biblioteca (propia o de otra persona) con filtros por tipo, estado, año, ranking, género y plataforma.
-import { html, useState, useMemo } from 'preact-standalone';
+import { html, useState, useMemo, useEffect } from 'preact-standalone';
 import { PosterCard, Tabs, Chip, SkeletonGrid, Modal, Icon, Scramble } from '../components/ui.js';
 import { useStore, toast } from '../lib/store.js';
 import { setQuery } from '../lib/router.js';
@@ -19,7 +19,7 @@ export function readFilters(q) {
   };
 }
 
-export function FilteredGrid({ entries, filters, setFilters, title, exportName = 'TVDaily', showExport = true }) {
+export function FilteredGrid({ entries, filters, setFilters, title, exportName = 'Veoleo', showExport = true }) {
   const { settings, lists } = useStore();
   const [exp, setExp] = useState(false);
   const f = filters;
@@ -77,17 +77,19 @@ export function FilteredGrid({ entries, filters, setFilters, title, exportName =
         <span class="count">${shown.length} ${shown.length === 1 ? 'RESULTADO' : 'RESULTADOS'}</span>
         <div class="row" style="--g:8px">
           ${anyFilter && html`<button class="btn text" onClick=${() => set({ status: '', year: '', minRating: 0, genre: '', platform: '', format: '', text: '' })}>Limpiar filtros</button>`}
-          ${showExport && shown.length > 0 && html`<button class="btn sm" onClick=${() => setExp(true)}><${Icon} name="download" size=${14} /> Exportar ${shown.length}</button>`}
+          ${showExport && shown.length > 0 && html`<button class="btn sm obsidian" onClick=${() => setExp('zip')} title="Bóveda de Obsidian (.zip)"><${Icon} name="obsidian" size=${14} /> Obsidian · ${shown.length}</button>
+            <button class="btn sm ghost" onClick=${() => setExp(true)}><${Icon} name="download" size=${14} /> Exportar</button>`}
         </div>
       </div>
       ${shown.length ? html`<div class="grid">${shown.map((e) => html`<${PosterCard} key=${e.id} e=${e} />`)}</div>`
         : html`<p class="lead">Nada coincide con esos filtros.</p>`}
-      ${exp && html`<${ExportModal} entries=${shown} name=${exportName} settings=${settings} lists=${lists} onClose=${() => setExp(false)} />`}
+      ${exp && html`<${ExportModal} entries=${shown} name=${exportName} settings=${settings} lists=${lists} auto=${exp === true ? '' : exp} onClose=${() => setExp(false)} />`}
     </div>`;
 }
 
-export function ExportModal({ entries, name, settings, lists = [], onClose }) {
+export function ExportModal({ entries, name, settings, lists = [], onClose, auto = '' }) {
   const [prog, setProg] = useState(null);
+  useEffect(() => { if (auto) run(auto); }, []);
   async function run(kind) {
     try {
       if (kind === 'json') { await exportJSON(entries, `${name}.json`); done(); return; }
@@ -108,13 +110,13 @@ export function ExportModal({ entries, name, settings, lists = [], onClose }) {
   function done() { sfx.braam(0.4); flash('Exportado', '#c6ff3d'); onClose(); }
   const Opt = ({ k, t, d }) => html`<button class="list-card" style="text-align:left;background:none;border-left:0;border-right:0;border-bottom:0;cursor:pointer;padding:20px 0;width:100%;color:inherit;font:inherit" onClick=${() => run(k)}>
     <h3>${t}</h3><span class="label" style="text-transform:none;letter-spacing:.02em;font-size:.85rem">${d}</span></button>`;
-  return html`<${Modal} kicker="Exportar" title=${`${entries.length} entradas`} width=${640} onClose=${onClose}>
+  return html`<${Modal} kicker=${auto ? 'Obsidian' : 'Exportar'} color=${auto ? 'var(--purple)' : 'var(--accent)'} title=${`${entries.length} entradas`} width=${640} onClose=${onClose}>
     ${prog ? html`<div class="stack" style="--g:18px">
         <h2 class="display" style="font-size:4rem">${Math.round((prog[0] / Math.max(1, prog[1])) * 100)}%</h2>
         <div class="season"><div class="sbar" style="height:2px"><i style=${`width:${(prog[0] / Math.max(1, prog[1])) * 100}%`}></i></div></div>
         <span class="count">${prog[0]} / ${prog[1]} · INCLUYE EPISODIOS CON SINOPSIS</span></div>`
     : html`<div class="stack" style="--g:0">
-        <${Opt} k="zip" t="Bóveda de Obsidian (.zip)" d="Una nota por título en carpetas, índice con Dataview, listas y snippet CSS." />
+        <${Opt} k="zip" t="Bóveda de Obsidian (.zip)" d="Una nota por título en carpetas por tipo, con portada, valoración, episodios y tu nota. Índice con Dataview, listas y snippet CSS." />
         <${Opt} k="single" t="Un único Markdown" d="Todas las notas en un solo archivo .md." />
         <${Opt} k="csv" t="Hoja de cálculo (CSV)" d="Título, tipo, estado, valoración, fechas, plataforma y más." />
         <${Opt} k="letterboxd" t="CSV para Letterboxd" d="Tus películas en el formato de importación de Letterboxd." />

@@ -1,6 +1,6 @@
 // Pantalla de acceso / registro con muro animado de pósters.
 import { html, useState, useEffect } from 'preact-standalone';
-import { Icon, Scramble, SupportButton } from '../components/ui.js';
+import { Icon, Scramble, SupportButton, LangToggle } from '../components/ui.js';
 import { loginEmail, registerEmail, loginGoogle, resetPassword, authErrorText } from '../lib/db.js';
 import { appleTop } from '../lib/metadata.js';
 import { img } from '../lib/utils.js';
@@ -51,7 +51,7 @@ export function AuthPage() {
     <div class="auth">
       <section class="art">
         <${Wall} />
-        <a class="logo" href="#/"><i></i>TVDaily</a>
+        <div class="row between" style="position:relative;z-index:2"><a class="logo" href="#/"><i></i>Veoleo</a><${LangToggle} /></div>
         <div>
           <div class="kicker">Series · Cine · Libros · Audiolibros</div>
           <h1 class="claim" style="margin-top:22px"><${Scramble} text="Todo lo que" ms=${600} /><br /><span class="grad-text">ves, lees</span><br />y escuchas.</h1>
@@ -61,7 +61,7 @@ export function AuthPage() {
               .map((t) => html`<span>${t}</span>`)}
           </div>
         </div>
-        <div class="row between"><span class="label">© ${new Date().getFullYear()} TVDaily</span><${SupportButton} size="sm" /></div>
+        <div class="row between"><a class="label" href="#/about" style="text-decoration:none">Qué puedes hacer en Veoleo →</a><${SupportButton} size="sm" /></div>
       </section>
 
       <form class="form" onSubmit=${submit}>

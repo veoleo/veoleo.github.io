@@ -1,4 +1,4 @@
-// Datos: importar historial (TV Time, Netflix, Letterboxd, Goodreads, IMDb, TVDaily) y exportar en varios formatos.
+// Datos: importar historial (TV Time, Netflix, Letterboxd, Goodreads, IMDb, Veoleo) y exportar en varios formatos.
 import { html, useState, useRef } from 'preact-standalone';
 import { Icon, Switch, SectionHead, Scramble, PosterCard } from '../components/ui.js';
 import { ExportModal } from './library.js';
@@ -8,8 +8,8 @@ import { TYPES } from '../lib/utils.js';
 import { sfx } from '../lib/sound.js';
 import { flash, confetti } from '../lib/fx.js';
 
-const SRC_C = { tvtime: 'var(--yellow)', netflix: 'var(--red)', letterboxd: 'var(--teal)', goodreads: 'var(--orange)', imdb: 'var(--yellow)', tvdaily: 'var(--accent)' };
-const FMT = { tvtime: 'TV Time', netflix: 'Netflix', letterboxd: 'Letterboxd', goodreads: 'Goodreads', imdb: 'IMDb', tvdaily: 'Copia de TVDaily' };
+const SRC_C = { tvtime: 'var(--yellow)', netflix: 'var(--red)', letterboxd: 'var(--teal)', goodreads: 'var(--orange)', imdb: 'var(--yellow)', veoleo: 'var(--accent)' };
+const FMT = { tvtime: 'TV Time', netflix: 'Netflix', letterboxd: 'Letterboxd', goodreads: 'Goodreads', imdb: 'IMDb', veoleo: 'Copia de Veoleo' };
 const fmtName = (f) => f.split(' + ').map((x) => FMT[x] || x).join(' + ');
 
 export function DataPage() {
@@ -94,20 +94,25 @@ export function DataPage() {
           onDrop=${(e) => { e.preventDefault(); setOver(false); onFiles(e.dataTransfer.files); }} onClick=${(e) => { e.preventDefault(); pick(); }}>
           <span class="label">O suelta aquí cualquier archivo (ZIP, CSV o JSON): el formato se detecta solo</span>
         </label>
-        <p class="small muted" style="margin-top:24px;max-width:780px">¿Conectar Netflix, Movistar Plus+, HBO Max o Prime Video para que se añada solo lo que ves? Ninguna de estas plataformas ofrece una conexión pública para apps de terceros. Netflix sí permite descargar tu historial completo: impórtalo aquí cuando quieras y TVDaily añade lo nuevo y salta lo que ya tienes.</p>
+        <p class="small muted" style="margin-top:24px;max-width:780px">¿Conectar Netflix, Movistar Plus+, HBO Max o Prime Video para que se añada solo lo que ves? Ninguna de estas plataformas ofrece una conexión pública para apps de terceros. Netflix sí permite descargar tu historial completo: impórtalo aquí cuando quieras y Veoleo añade lo nuevo y salta lo que ya tienes.</p>
       `}
     </section>
 
     <section class="section">
       <${SectionHead} kicker="Exportar" title="Llévatelo" color="var(--teal)"><span class="count">${entries.length} ENTRADAS · ${lists.length} LISTAS</span></${SectionHead}>
-      <div class="src-tiles">${[
+      <div class="src-tiles">
+        <div class="src-tile wide" style="--c:var(--purple)"><h3><${Icon} name="obsidian" size=${20} /> Obsidian completo</h3>
+          <p>Todo tu diario como bóveda de Obsidian: una nota por título con portada, valoración, episodios con sinopsis y tu nota, más índice con Dataview y listas.</p>
+          <div class="row" style="--g:8px"><button class="btn sm obsidian" disabled=${!entries.length} onClick=${() => setExp('zip')}><${Icon} name="download" size=${14} /> Bóveda .zip</button>
+            <button class="btn sm ghost" disabled=${!entries.length} onClick=${() => setExp('single')}>Un solo .md</button></div></div>
+        ${[
         ['Formato TV Time', 'Episodios vistos, series seguidas y películas con la misma estructura que la descarga de datos de TV Time. Ideal para bingers que cambian de app.', 'var(--yellow)', async () => { await exportTVTime(entries); sfx.pop(); }],
-        ['Obsidian y más', 'Bóveda de Markdown con Dataview, un único .md, CSV, Letterboxd o Goodreads.', 'var(--purple)', () => setExp(true)],
-        ['Trakt', 'CSV de episodios y películas vistos para importar en Trakt.', 'var(--red)', () => { exportCSV(entries, 'TVDaily-trakt.csv', 'trakt'); sfx.pop(); }],
-        ['Copia de seguridad', 'JSON con todas tus entradas, notas y listas. Se puede volver a importar.', 'var(--accent)', async () => { await exportJSON(entries, 'TVDaily-backup.json', lists); sfx.pop(); }],
+        ['Trakt', 'CSV de episodios y películas vistos para importar en Trakt.', 'var(--red)', () => { exportCSV(entries, 'Veoleo-trakt.csv', 'trakt'); sfx.pop(); }],
+        ['Más formatos', 'CSV, Letterboxd o Goodreads.', 'var(--teal)', () => setExp(true)],
+        ['Copia de seguridad', 'JSON con todas tus entradas, notas y listas. Se puede volver a importar.', 'var(--accent)', async () => { await exportJSON(entries, 'Veoleo-backup.json', lists); sfx.pop(); }],
       ].map(([t, d, c, fn]) => html`<div class="src-tile" key=${t} style=${`--c:${c}`}><h3>${t}</h3><p>${d}</p>
         <button class="btn sm" disabled=${!entries.length} onClick=${fn}><${Icon} name="download" size=${14} /> Exportar</button></div>`)}</div>
     </section>
-    ${exp && html`<${ExportModal} entries=${entries} name="TVDaily" settings=${settings} lists=${lists} onClose=${() => setExp(false)} />`}
+    ${exp && html`<${ExportModal} entries=${entries} name="Veoleo" settings=${settings} lists=${lists} auto=${exp === true ? '' : exp} onClose=${() => setExp(false)} />`}
   </div>`;
 }

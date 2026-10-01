@@ -1,4 +1,5 @@
 // Guía TV: tus próximos episodios y la programación del día por plataforma, como la parrilla de siempre.
+import { DEFAULT_REGION } from '../lib/i18n.js';
 import { html, useState, useMemo } from 'preact-standalone';
 import { useAsync, Tabs, Chip, Spinner, Cover, Icon, Scramble, SectionHead } from '../components/ui.js';
 import { PreviewModal } from '../components/preview.js';
@@ -88,7 +89,7 @@ function Schedule() {
   const { entries, settings } = useStore();
   const days = Array.from({ length: 8 }, (_, i) => iso(new Date(Date.now() + i * 864e5)));
   const [day, setDay] = useState(days[0]);
-  const [country, setCountry] = useState(settings.region || 'ES');
+  const [country, setCountry] = useState(settings.region || DEFAULT_REGION);
   const [plats, setPlats] = useState([]);
   const [onlyMine, setOnlyMine] = useState(false);
   const [onlyPrem, setOnlyPrem] = useState(false);
