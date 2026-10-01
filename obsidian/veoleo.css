@@ -1,0 +1,31 @@
+/* Veoleo · snippet para Obsidian */
+.veoleo {
+  --vl-ink: #16141f; --vl-paper: #fff8ec; --vl-red: #f2545b; --vl-yellow: #f9c846;
+  --vl-teal: #2bb3a3; --vl-blue: #3b6cf6; --vl-pink: #ee7ba8; --vl-purple: #8e6cef;
+}
+.veoleo .inline-title, .veoleo h1 {
+  font-family: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  font-weight: 800; font-size: 2.6em; letter-spacing: -0.02em; line-height: 1.02;
+}
+.veoleo h2 { font-weight: 800; border-bottom: 3px solid var(--vl-ink); padding-bottom: .15em; }
+.theme-dark .veoleo h2 { border-color: currentColor; }
+.veoleo img[alt="portada"] {
+  float: right; margin: 0 0 1em 1.2em; border: 3px solid var(--vl-ink); border-radius: 12px;
+  box-shadow: 6px 6px 0 var(--vl-ink); transform: rotate(1.5deg);
+}
+.veoleo .callout {
+  border: 3px solid var(--vl-ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--vl-ink);
+  mix-blend-mode: normal;
+}
+.callout[data-callout="veoleo-rating"] { --callout-color: 249, 200, 70; --callout-icon: lucide-star; background: rgb(249 200 70 / .25); }
+.callout[data-callout="veoleo-rating"] .callout-title-inner { font-size: 1.5em; letter-spacing: .08em; }
+.callout[data-callout="veoleo-music"] { --callout-color: 238, 123, 168; --callout-icon: lucide-music; }
+.callout[data-callout="veoleo-season"] { --callout-color: 59, 108, 246; --callout-icon: lucide-tv; }
+.veoleo .callout[data-callout="abstract"] { --callout-color: 43, 179, 163; }
+.veoleo .callout[data-callout="info"] { --callout-color: 142, 108, 239; }
+.veoleo table { border: 2px solid var(--vl-ink); border-radius: 10px; overflow: hidden; }
+.veoleo .task-list-item-checkbox:checked { background-color: var(--vl-teal); border-color: var(--vl-ink); }
+.veoleo-series h1 { color: var(--vl-blue); }
+.veoleo-movie h1 { color: var(--vl-red); }
+.veoleo-book h1 { color: #d9a400; }
+.veoleo-audiobook h1 { color: var(--vl-teal); }
