@@ -981,3 +981,22 @@ button.more-link { width: 100%; background: none; border: 0; border-bottom: 1px 
 
 .graph-prev canvas { cursor: grab; touch-action: none; }
 .graph-prev canvas:active { cursor: grabbing; }
+
+/* ── selección múltiple ── */
+.sel-wrap { position: relative; }
+.selecting .sel-wrap { cursor: pointer; }
+.selecting .sel-wrap .pcard { pointer-events: none; transition: transform .2s, opacity .2s; }
+.selecting .sel-wrap:not(.on) .pcard { opacity: .72; }
+.sel-wrap.on .pcard { transform: scale(.94); }
+.sel-tick { position: absolute; top: 8px; left: 8px; z-index: 3; width: 30px; height: 30px; display: grid; place-items: center; background: rgba(5, 6, 10, .75); border: 2px solid rgba(255, 255, 255, .7); color: transparent; clip-path: var(--chamfer-tr); }
+.sel-wrap.on .sel-tick { background: var(--accent); border-color: var(--accent); color: var(--dark); }
+.sel-wrap.on::after { content: ''; position: absolute; inset: -4px; border: 2px solid var(--accent); pointer-events: none; }
+.bulk-bar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 70; width: min(980px, calc(100vw - 24px)); background: #10121b; border: 1px solid var(--accent); box-shadow: 0 30px 80px -20px #000; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.bulk-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.bulk-top b { color: var(--accent); font: 700 .9rem var(--f-mono); letter-spacing: .06em; text-transform: uppercase; }
+.bulk-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bulk-acts .select { width: auto; padding: 8px 10px; font-size: .8rem; }
+.bulk-st { border: 1px solid var(--c); background: transparent; color: var(--text); font: 600 .74rem var(--f-mono); letter-spacing: .06em; text-transform: uppercase; padding: 8px 11px; cursor: pointer; }
+.bulk-st:hover:not(:disabled) { background: var(--c); color: var(--dark); }
+.bulk-st:disabled, .bulk-acts .btn:disabled { opacity: .4; cursor: default; }
+@media (max-width: 1200px) { .bulk-bar { bottom: calc(76px + env(safe-area-inset-bottom)); } }
