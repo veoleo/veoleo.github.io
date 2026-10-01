@@ -33,7 +33,9 @@ const uidOrThrow = () => {
 
 export function onAuth(cb) { return onAuthStateChanged(auth, cb); }
 export const loginEmail = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
+let pendingName = '';
 export async function registerEmail(name, email, pass) {
+  pendingName = String(name || '').trim();
   const cred = await createUserWithEmailAndPassword(auth, email, pass);
   if (name) await updateAuthProfile(cred.user, { displayName: name });
   return cred;
@@ -73,7 +75,9 @@ export async function ensureProfile(user) {
   const ref = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
   if (snap.exists()) return snap.data();
-  const base = (slug(user.displayName || (user.email || '').split('@')[0]).replace(/-/g, '') || 'fan').slice(0, 16);
+  // El @usuario nunca se deriva del email para no exponerlo.
+  const name = user.displayName || pendingName;
+  const base = (slug(name).replace(/-/g, '') || 'fan').slice(0, 16).padEnd(3, '0');
   let handle = base;
   for (let i = 0; i < 6; i++) {
     try { await setDoc(doc(db, 'handles', handle), { uid: user.uid }); break; }
@@ -81,7 +85,7 @@ export async function ensureProfile(user) {
   }
   const profile = {
     uid: user.uid,
-    displayName: user.displayName || handle,
+    displayName: name || 'Fan de Veoleo',
     handle,
     photoURL: user.photoURL || '',
     bio: '',
@@ -198,10 +202,13 @@ function clean(o) {
   return o;
 }
 
+// Privacidad por defecto (Ajustes → Privacidad).
+export const defaultVisibility = () => (getState().settings?.privateByDefault ? 'private' : 'public');
+
 export async function createEntry(data) {
   const uid = uidOrThrow();
   const ref = await addDoc(collection(db, 'entries'), clean({
-    ...data, ownerId: uid, ...ownerFields(), createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    ...data, visibility: data.visibility || defaultVisibility(), ownerId: uid, ...ownerFields(), createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   }));
   return ref.id;
 }
@@ -327,7 +334,7 @@ export async function followersOf(uid) {
 
 export async function createList(data) {
   const uid = uidOrThrow();
-  const ref = await addDoc(collection(db, 'lists'), clean({ itemIds: [], isPublic: true, ...data, ownerId: uid, ...ownerFields(), createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+  const ref = await addDoc(collection(db, 'lists'), clean({ itemIds: [], isPublic: defaultVisibility() === 'public', ...data, ownerId: uid, ...ownerFields(), createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
   return ref.id;
 }
 export const updateList = (id, patch) => updateDoc(doc(db, 'lists', id), clean({ ...patch, updatedAt: serverTimestamp() }));
@@ -352,7 +359,8 @@ export async function importEntries(items) {
     for (const it of items.slice(i, i + 400)) {
       const ref = doc(collection(db, 'entries'));
       ids.push(ref.id);
-      b.set(ref, clean({ visibility: 'public', ...it, ownerId: uid, ...own, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+      const visibility = defaultVisibility() === 'private' ? 'private' : (it.visibility === 'private' ? 'private' : 'public');
+      b.set(ref, clean({ ...it, visibility, ownerId: uid, ...own, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
     }
     await b.commit();
   }
@@ -443,4 +451,19 @@ export async function deleteReply(postId, rid) {
   b.delete(doc(db, 'posts', postId, 'replies', rid));
   b.update(doc(db, 'posts', postId), { replyCount: increment(-1) });
   await b.commit();
+}
+
+// Cambia la visibilidad de todo tu diario de una vez (y oculta las notas si pasa a privado).
+export async function setAllVisibility(visibility, entries) {
+  const uid = uidOrThrow();
+  const list = entries.filter((e) => e.visibility !== visibility);
+  for (let i = 0; i < list.length; i += 200) {
+    const b = writeBatch(db);
+    for (const e of list.slice(i, i + 200)) {
+      b.update(doc(db, 'entries', e.id), { visibility, ...(visibility === 'private' ? { notePublic: false } : {}), updatedAt: serverTimestamp() });
+      if (visibility === 'private' && e.hasNote) b.set(doc(db, 'notes', e.id), { ownerId: uid, isPublic: false, updatedAt: serverTimestamp() }, { merge: true });
+    }
+    await b.commit();
+  }
+  return list.length;
 }

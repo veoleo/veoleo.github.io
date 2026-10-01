@@ -94,9 +94,9 @@ export function starsText(r) {
 
 export function stripHtml(s) {
   if (!s) return '';
-  const d = document.createElement('div');
-  d.innerHTML = String(s).replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n');
-  return (d.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  // DOMParser crea un documento inerte: no carga imágenes ni ejecuta nada del HTML de terceros.
+  const doc = new DOMParser().parseFromString(String(s).replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n'), 'text/html');
+  return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 export function slug(s) {

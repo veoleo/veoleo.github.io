@@ -246,6 +246,14 @@ const EN = {
   'Web o red social': 'Website or social', 'Ubicación': 'Location', 'Portada y color del perfil': 'Profile cover & color', 'letterboxd.com/tu-usuario': 'letterboxd.com/your-username',
   'Qué es Veoleo': 'What is Veoleo', 'Contacto:': 'Contact:', 'Qué puedes hacer en Veoleo →': 'What you can do on Veoleo →', 'Language': 'Language', 'Obsidian': 'Obsidian',
 
+  'Privacidad': 'Privacy', 'Quién ve tu diario': 'Who sees your diary',
+  'Tu email nunca se muestra a nadie. Lo público solo lo ven personas con cuenta en Veoleo; lo privado solo tú. Las notas tienen su propia privacidad y una nota nunca es visible si su entrada es privada.': 'Your email is never shown to anyone. Public items are only visible to people with a Veoleo account; private ones only to you. Notes have their own privacy and a note is never visible if its entry is private.',
+  'Lo que añada o importe será privado por defecto': 'Make everything I add or import private by default', 'Lo nuevo será privado': 'New items will be private', 'Lo nuevo será público': 'New items will be public',
+  'Hacer todo privado': 'Make everything private', 'Hacer todo público': 'Make everything public', 'Aplicando…': 'Applying…',
+  '¿Hacer privado todo tu diario? Nadie más podrá ver tus entradas ni tus notas.': 'Make your whole diary private? Nobody else will be able to see your entries or notes.',
+  '¿Hacer público todo tu diario? Las notas seguirán siendo privadas salvo que las publiques.': 'Make your whole diary public? Notes stay private unless you publish them.',
+  'Esta entrada es privada: al publicar, el título y tu progreso serán visibles en Comunidad.': 'This entry is private: posting will show its title and your progress in Community.',
+
   // géneros
   'Acción': 'Action', 'Acción y aventura': 'Action & adventure', 'Aventura': 'Adventure', 'Animación': 'Animation', 'Anime': 'Anime', 'Biografía': 'Biography', 'Comedia': 'Comedy',
   'Crimen': 'Crime', 'Documental': 'Documentary', 'Drama': 'Drama', 'Familia': 'Family', 'Fantasía': 'Fantasy', 'Historia': 'History', 'Terror': 'Horror', 'Musical': 'Musical',
@@ -257,6 +265,7 @@ const EN = {
 };
 
 const PATTERNS = [
+  [/^(\d+) entradas ahora (privadas|públicas)$/, (m, n, w) => `${n} entries now ${w === 'privadas' ? 'private' : 'public'}`],
   [/^¿Qué te está pareciendo (.+)\?$/, 'What do you think of $1 so far?'], [/^Progreso · (\d+)%$/, 'Progress · $1%'],
   [/^Valoración ([\d.]+) de 5$/, 'Rating $1 of 5'],
   [/^Temporada (\d+)$/, 'Season $1'], [/^Temporada (\d+) vista$/, 'Season $1 watched'], [/^Temporada (\d+)$/i, 'Season $1'],

@@ -8,9 +8,21 @@ import { getSeasons, deciderUrl, justwatchUrl, platformsOf } from './metadata.js
 
 /* ───────────── Render para previsualizar en la app ───────────── */
 
-export function renderMarkdown(md) {
+// Enlaces de contenido de usuarios: siempre en pestaña nueva y sin pasar referer ni permisos.
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A' && node.getAttribute('href')) {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener noreferrer nofollow ugc');
+  }
+  if (node.tagName === 'IMG') { node.setAttribute('referrerpolicy', 'no-referrer'); node.setAttribute('loading', 'lazy'); }
+});
+const STRICT = { FORBID_TAGS: ['img', 'picture', 'video', 'audio', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'style', 'svg', 'math'], FORBID_ATTR: ['style', 'class', 'id'] };
+const NORMAL = { FORBID_TAGS: ['iframe', 'object', 'embed', 'form', 'input', 'button', 'style'], FORBID_ATTR: ['style', 'id'] };
+
+// strict: texto de otras personas (publicaciones, comentarios, respuestas) → sin imágenes ni incrustados.
+export function renderMarkdown(md, { strict = false } = {}) {
   let h = marked.parse(String(md || ''), { gfm: true, breaks: true });
-  h = DOMPurify.sanitize(h);
+  h = DOMPurify.sanitize(h, strict ? STRICT : NORMAL);
   // Callouts de Obsidian: > [!tipo] Título
   h = h.replace(/<blockquote>\s*<p>\[!([\w-]+)\]([+-]?)\s*([^<\n]*)(?:<br>\n?|\n)?/g,
     (m, type, fold, title) => `<blockquote class="callout" data-callout="${type}"><p class="callout-title">${title || type}</p><p>`);
