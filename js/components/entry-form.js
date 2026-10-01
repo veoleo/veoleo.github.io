@@ -4,7 +4,7 @@ import { Modal, Stars, Tabs, Switch, Chip, Cover, Icon } from './ui.js';
 import {
   TYPES, statusKeysFor, STATUS_COLORS, statusLabel, PLATFORMS, READ_PLACES, LISTEN_PLACES, todayISO, youtubeId, normGenres, uniq,
 } from '../lib/utils.js';
-import { createEntry, updateEntry, updateList } from '../lib/db.js';
+import { createEntry, updateEntry, updateList, defaultVisibility } from '../lib/db.js';
 import { toast, useStore } from '../lib/store.js';
 import { platformsOf, toEntryFields } from '../lib/metadata.js';
 import { sfx } from '../lib/sound.js';
@@ -23,7 +23,7 @@ export function EntryForm({ draft, onClose, onSaved }) {
     platform: draft.platform || platformsOf(draft)[0] || '',
     consumption: { read: draft.type === 'book', listened: draft.type === 'audiobook', readOn: '', listenedOn: '', ...(draft.consumption || {}) },
     tags: (draft.tags || []).join(', '),
-    visibility: draft.visibility || 'public',
+    visibility: draft.visibility || defaultVisibility(),
     rewatch: draft.rewatch || 0,
     type: draft.type,
     title: draft.title || '', year: draft.year || '', cover: draft.cover || '', backdrop: draft.backdrop || '',

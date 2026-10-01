@@ -84,6 +84,7 @@ export function PostComposer({ preset = null, onPosted, autoFocus = false }) {
         onKeyDown=${(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) publish(e); }}></textarea>
       ${snap && html`<div class="cattach"><${EntryStrip} en=${snap} />
         <button type="button" class="btn icon text" title="Quitar" aria-label="Quitar" onClick=${() => setEntryId('')}><${Icon} name="close" size=${16} /></button></div>`}
+      ${entry?.visibility === 'private' && html`<p class="small" style="margin:0;color:var(--yellow)">Esta entrada es privada: al publicar, el título y tu progreso serán visibles en Comunidad.</p>`}
       ${entry && entry.type !== 'series' && html`<div class="field" style="max-width:420px"><label>Progreso · ${pct ?? 0}%</label>
         <input type="range" min="0" max="100" step="5" value=${pct ?? 0} onInput=${(e) => setPct(Number(e.currentTarget.value))} /></div>`}
       ${picking && html`<div class="cpick">
@@ -133,7 +134,7 @@ export function Replies({ post }) {
         <div class="row" style="--g:10px"><a class="who" href=${`#/u/${r.authorId}`}>${r.authorName}</a><span class="when">${timeAgo(toMillis(r.createdAt) || Date.now())}</span>
           ${(r.authorId === user?.uid || post.authorId === user?.uid) && html`<button class="btn text" style="margin-left:auto" title="Borrar" aria-label="Borrar respuesta"
             onClick=${() => deleteReply(post.id, r.id).catch((x) => toast(x.message, 'err'))}><${Icon} name="trash" size=${13} /></button>`}</div>
-        <div class="prose rtext" dangerouslySetInnerHTML=${{ __html: renderMarkdown(r.text) }}></div>
+        <div class="prose rtext" dangerouslySetInnerHTML=${{ __html: renderMarkdown(r.text, { strict: true }) }}></div>
       </div></div>`)}
     <form class="reply" onSubmit=${send}>
       <${Avatar} user=${profile} size=${32} />
@@ -178,7 +179,7 @@ export function PostCard({ p, liked = false, open = false, onDeleted }) {
       </header>
       ${p.text && html`<div class=${'ptext' + (reveal ? '' : ' blur')} onClick=${() => !reveal && setReveal(true)}>
         ${!reveal && html`<span class="spoil">Spoiler · pulsa para ver</span>`}
-        <div class="prose" dangerouslySetInnerHTML=${{ __html: renderMarkdown(p.text) }}></div></div>`}
+        <div class="prose" dangerouslySetInnerHTML=${{ __html: renderMarkdown(p.text, { strict: true }) }}></div></div>`}
       ${p.entry && html`<${EntryStrip} en=${p.entry} href=${entryHref} />`}
       <footer class="pacts">
         <button class=${'pact' + (on ? ' on' : '')} onClick=${toggleLike} aria-pressed=${on} title="Me gusta"><${Icon} name="heart" size=${17} /><span>${n || ''}</span></button>

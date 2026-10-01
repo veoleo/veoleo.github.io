@@ -123,7 +123,7 @@ export function Comments({ e }) {
               <div class="row" style="--g:10px"><a class="who" href=${`#/u/${c.authorId}`}>${c.authorName}</a>${c.authorHandle && html`<span class="when">@${c.authorHandle}</span>`}<span class="when">${timeAgo(toMillis(c.createdAt))}</span></div>
               ${(c.authorId === user?.uid || e.ownerId === user?.uid) && html`<button class="btn text" title="Borrar" aria-label="Borrar comentario" onClick=${() => deleteComment(e.id, c.id).catch((x) => toast(x.message, 'err'))}><${Icon} name="trash" size=${14} /></button>`}
             </div>
-            <div class="prose" style="font-size:.98rem;margin-top:6px" dangerouslySetInnerHTML=${{ __html: renderMarkdown(c.text) }}></div>
+            <div class="prose" style="font-size:.98rem;margin-top:6px" dangerouslySetInnerHTML=${{ __html: renderMarkdown(c.text, { strict: true }) }}></div>
           </div>
         </div>`)}
       <form class="comment" onSubmit=${send}>

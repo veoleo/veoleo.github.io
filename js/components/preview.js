@@ -38,7 +38,7 @@ export function PreviewModal({ item, onClose }) {
 
   async function quickAdd() {
     try {
-      const id = await createEntry({ ...toEntryFields(d), status: 'planned', rating: 0, visibility: 'public', watchedEpisodes: [], hasNote: false, notePublic: false, startedAt: '', finishedAt: '' });
+      const id = await createEntry({ ...toEntryFields(d), status: 'planned', rating: 0, watchedEpisodes: [], hasNote: false, notePublic: false, startedAt: '', finishedAt: '' });
       flash(isScreen ? 'Must watch' : 'Por leer', '#ff5fae'); sfx.chime();
       onClose(); go(`item/${id}`);
     } catch (e) { toast('No se pudo guardar: ' + e.message, 'err'); }
