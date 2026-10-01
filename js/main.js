@@ -1,10 +1,10 @@
 // Punto de entrada: auth, shell, navegación, paleta de comandos e intro.
 import { LANG, startDomTranslation } from './lib/i18n.js';
-import { html, render, useState, useEffect, useRef, Component } from 'preact-standalone';
+import { html, render, useState, useEffect, useLayoutEffect, useRef, Component } from 'preact-standalone';
 import { useStore, setState, toast } from './lib/store.js';
 import { onAuth, ensureProfile, loadSettings, watchMine, logout, loadSavedNews } from './lib/db.js';
 import { reconcileSeries, resetReconcile } from './lib/sync.js';
-import { useRoute, go } from './lib/router.js';
+import { useRoute, go, scrollTop } from './lib/router.js';
 import { sfx, unlockAudio, isSoundOn, setSound } from './lib/sound.js';
 import { observeReveal, trackCursor } from './lib/fx.js';
 import { Avatar, Toasts, Icon, Cover, Footer, SupportButton, LangToggle } from './components/ui.js';
@@ -132,10 +132,42 @@ function Header({ route, onPalette }) {
   </header>`;
 }
 
+// Móvil: barra inferior con lo esencial y «Más» con todas las secciones.
+const MORE = [
+  ['discover', 'Novedades', 'spark'], ['news', 'Noticias', 'news'], ['explore', 'Comunidad', 'users'], ['lists', 'Listas', 'list'],
+  ['challenges', 'Retos', 'trophy'], ['stats', 'Estadísticas', 'chart'], ['data', 'Importar y exportar', 'database'],
+  ['settings', 'Ajustes', 'settings'], ['about', 'Qué es Veoleo', 'info'],
+];
+function MoreSheet({ onClose }) {
+  const { user } = useStore();
+  useEffect(() => {
+    sfx.open();
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    const k = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', k);
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', k); };
+  }, []);
+  return html`<div class="more-sheet" role="dialog" aria-modal="true" aria-label="Más secciones" onClick=${(e) => e.target === e.currentTarget && onClose()}>
+    <div class="more-in">
+      <div class="row between" style="margin-bottom:8px"><span class="kicker">Secciones</span>
+        <div class="row" style="--g:8px"><${LangToggle} /><button class="btn icon glass" aria-label="Cerrar" onClick=${onClose}><${Icon} name="close" /></button></div></div>
+      <a class="more-link" href=${`#/u/${user.uid}`} onClick=${onClose}><${Icon} name="user" /><span>Mi perfil</span></a>
+      ${MORE.map(([path, label, icon]) => html`<a key=${path} class="more-link" href=${'#/' + path} onClick=${onClose}><${Icon} name=${icon} /><span>${label}</span></a>`)}
+      ${SUPPORT_URL && html`<a class="more-link coffee-link" href=${SUPPORT_URL} target="_blank" rel="noopener"><${Icon} name="coffee" /><span>Invítame a un café</span></a>`}
+    </div>
+  </div>`;
+}
+
 function BottomNav({ route }) {
-  const items = [['home', '', 'Inicio', 'home'], ['guide', 'guide', 'Guía', 'guide'], ['search', 'search', 'Buscar', 'search'], ['library', 'library', 'Biblioteca', 'grid'], ['news', 'news', 'Noticias', 'news']];
+  const [more, setMore] = useState(false);
+  useEffect(() => setMore(false), [route.parts.join('/')]);
+  const items = [['home', '', 'Inicio', 'home'], ['guide', 'guide', 'Guía', 'guide'], ['search', 'search', 'Buscar', 'search'], ['library', 'library', 'Biblioteca', 'grid']];
+  const inMore = MORE.some(([p]) => p === route.name) || route.name === 'u';
   return html`<nav class="bottom-nav">${items.map(([k, path, label, icon]) => html`
-    <a key=${k} href=${'#/' + path} class=${route.name === k ? 'on' : ''}><${Icon} name=${icon} />${label}</a>`)}</nav>`;
+    <a key=${k} href=${'#/' + path} class=${route.name === k ? 'on' : ''}><${Icon} name=${icon} />${label}</a>`)}
+    <button class=${inMore || more ? 'on' : ''} onClick=${() => { setMore(!more); sfx.click(); }} aria-expanded=${more}><${Icon} name="menu" />Más</button>
+  </nav>
+  ${more && html`<${MoreSheet} onClose=${() => setMore(false)} />`}`;
 }
 
 function Page({ route }) {
@@ -179,6 +211,8 @@ function App() {
   const route = useRoute();
   const [palette, setPalette] = useState(false);
   useEffect(() => { observeReveal(); });
+  const routeKey = route.parts.join('/');
+  useLayoutEffect(() => { scrollTop(); requestAnimationFrame(scrollTop); }, [routeKey]);
   useEffect(() => {
     const k = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((p) => !p); }
