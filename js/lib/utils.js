@@ -80,7 +80,7 @@ export function timeAgo(ms) {
 
 // Año en que cuenta una entrada para filtros/listas: fecha de fin, si no la de inicio, si no la de alta.
 export function entryYear(e) {
-  const d = e.finishedAt || e.startedAt;
+  const d = e.finishedAt || (e.status === 'completed' ? e.lastWatchedAt : '') || e.startedAt;
   if (d) return Number(String(d).slice(0, 4));
   const c = toMillis(e.createdAt);
   return c ? new Date(c).getFullYear() : null;

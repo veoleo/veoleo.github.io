@@ -288,6 +288,10 @@ const EN = {
   'No hay títulos de ese año': 'No titles from that year', 'Resumen ': 'Summary', 'Todo tu diario': 'Your whole diary', 'exportado el': 'exported on', 'Total': 'Total',
   'Portada': 'Cover', 'Autoría': 'Author', 'Enlace': 'Link',
 
+  'A las que ya tienes se les completan las fechas (empezado, último episodio visto y terminado) con las de este archivo.': 'Titles you already have get their dates (started, last episode watched and finished) filled in from this file.',
+
+  'Movida a tu lista Abandonadas': 'Moved to your Dropped list', 'Abandonar serie': 'Drop series',
+
   // géneros
   'Acción': 'Action', 'Acción y aventura': 'Action & adventure', 'Aventura': 'Adventure', 'Animación': 'Animation', 'Anime': 'Anime', 'Biografía': 'Biography', 'Comedia': 'Comedy',
   'Crimen': 'Crime', 'Documental': 'Documentary', 'Drama': 'Drama', 'Familia': 'Family', 'Fantasía': 'Fantasy', 'Historia': 'History', 'Terror': 'Horror', 'Musical': 'Musical',
@@ -299,6 +303,8 @@ const EN = {
 };
 
 const PATTERNS = [
+  [/^¿Abandonar (.+)\? Pasará a tu lista Abandonadas y dejará de salir aquí\.$/, 'Drop $1? It will move to your Dropped list and stop showing here.'],
+  [/^Fechas actualizadas en (\d+)$/, 'Dates updated on $1'],
   [/^(\d+) en Excel$/, '$1 in Excel'],
   [/^Nº (\d+) de (\d{4})$/, 'No. $1 of $2'], [/^Reto (\d{4}): (\d+)\/(\d+)$/, '$1 challenge: $2/$3'],
   [/^Otras plataformas \((\d+)\)$/, 'Other platforms ($1)'], [/^Revisar (\d*)$/, 'Review $1'],

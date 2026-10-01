@@ -28,7 +28,11 @@ export async function reconcileSeries(entries) {
     const status = seriesStatusFor(e, info);
     if (status !== e.status && (e.watchedEpisodes || []).length) {
       patch.status = status;
-      if (status === 'completed' && !e.finishedAt) patch.finishedAt = todayISO();
+      // Fecha real del último episodio visto; si no se conoce (importado sin fechas), se deja vacía en vez de inventar «hoy».
+      if (status === 'completed' && !e.finishedAt) {
+        const last = e.lastWatchedAt || (e.source?.name === 'import' ? '' : todayISO());
+        if (last) { patch.finishedAt = last; patch.finishedAuto = true; }
+      }
       moved[status]?.push(e.title);
     }
     if (info.status && info.status !== e.showStatus) patch.showStatus = info.status;
@@ -43,6 +47,18 @@ export async function reconcileSeries(entries) {
   return moved;
 }
 export function resetReconcile() { reconciled = new Set(); }
+
+// Reparación: series importadas que se marcaron «Vista» con la fecha del día (no la real).
+// Una fecha de fin igual o posterior al día de importación no puede venir del historial importado.
+export async function repairImportedDates(entries) {
+  const day = (ts) => { const m = ts?.toMillis ? ts.toMillis() : 0; return m ? new Date(m).toISOString().slice(0, 10) : ''; };
+  const bad = entries.filter((e) => e.source?.name === 'import' && e.status === 'completed' && e.finishedAt
+    && !e.datesRepaired && day(e.createdAt) && e.finishedAt >= day(e.createdAt));
+  for (const e of bad) {
+    await updateEntry(e.id, { finishedAt: e.lastWatchedAt && e.lastWatchedAt < day(e.createdAt) ? e.lastWatchedAt : '', finishedAuto: true, datesRepaired: true }).catch(() => {});
+  }
+  return bad.length;
+}
 
 // Próximos episodios (90 días) y emitidos recientes sin ver (21 días) de tus series.
 export function myEpisodes(entries) {

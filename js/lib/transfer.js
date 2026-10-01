@@ -172,7 +172,8 @@ function fromTVTime(fileRows) {
     s.watchedEpisodes = uniq(s.watchedEpisodes).sort();
     if (!s.watchedEpisodes.length && s.status !== 'abandoned') s.status = 'planned';
     const ds = s._dates.sort();
-    s.startedAt = ds[0] || ''; s.finishedAt = s.status === 'completed' ? ds[ds.length - 1] || '' : '';
+    s.startedAt = ds[0] || ''; s.lastWatchedAt = ds[ds.length - 1] || '';
+    s.finishedAt = s.status === 'completed' ? s.lastWatchedAt : '';
     if (s._tvdb) s.ids = { ...s.ids, tvdb: s._tvdb };
     delete s._dates;
     out.push(s);
@@ -182,17 +183,29 @@ function fromTVTime(fileRows) {
 
 // Netflix: «Título: Temporada 2: Nombre del episodio» + fecha. Agrupa por serie y cuenta episodios por temporada.
 const SEASON_RE = /^(temporada|season|parte|part|volumen|volume|libro|book|capítulo|chapter|serie limitada|limited series|miniserie|miniseries|colección|collection)\b\s*(\d+)?/i;
-function netflixDate(s) {
+// order: 'dmy' (España) o 'mdy' (EE. UU.); se deduce del archivo entero con dateOrder().
+function netflixDate(s, order = 'dmy') {
   const m = String(s).match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
   if (!m) return isoDate(s);
   let [, a, b, y] = m; a = +a; b = +b; y = +y; if (y < 100) y += 2000;
-  const [d, mo] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]; // ambiguo → día/mes (formato español)
+  const [d, mo] = a > 12 ? [a, b] : b > 12 ? [b, a] : order === 'mdy' ? [b, a] : [a, b];
   return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+function dateOrder(values) {
+  let dmy = 0, mdy = 0;
+  for (const v of values) {
+    const m = String(v).match(/^(\d{1,2})[/.-](\d{1,2})[/.-]/);
+    if (!m) continue;
+    if (+m[1] > 12) dmy++; else if (+m[2] > 12) mdy++;
+  }
+  return mdy > dmy ? 'mdy' : 'dmy';
 }
 const EPISODE_RE = /^(episode|episodio|capítulo|capitulo|chapter|ep\.?)\s*\d+/i;
 function fromNetflix(rows) {
   const shows = new Map(); const movies = new Map();
   const titleOf = (r) => String(r.Title || r.title || r.Título || '').trim();
+  const dateOf = (r) => r.Date || r.date || r.Fecha || r['Start Time'] || '';
+  const order = dateOrder(rows.map(dateOf));
   // Un mismo prefijo «Serie: …» que aparece varias veces es una serie aunque Netflix no ponga «Temporada»
   // (miniseries y series limitadas).
   const prefixCount = new Map();
@@ -205,7 +218,7 @@ function fromNetflix(rows) {
   };
   for (const r of rows) {
     const title = titleOf(r);
-    const date = netflixDate(r.Date || r.date || r.Fecha || r['Start Time'] || '');
+    const date = netflixDate(dateOf(r), order);
     if (!title) continue;
     const parts = title.split(': ');
     const si = parts.findIndex((p, i) => i > 0 && SEASON_RE.test(p));
@@ -223,7 +236,7 @@ function fromNetflix(rows) {
   const out = [];
   for (const s of shows.values()) {
     const ds = s._dates.sort();
-    s.startedAt = ds[0] || ''; s.finishedAt = '';
+    s.startedAt = ds[0] || ''; s.finishedAt = ''; s.lastWatchedAt = ds[ds.length - 1] || '';
     s._nfSeasons = Object.fromEntries(Object.entries(s._nf).map(([k, v]) => [k, v.size]));
     delete s._nf; delete s._dates;
     out.push(s);
@@ -327,8 +340,22 @@ export const normTitle = (t) => String(t || '').toLowerCase().normalize('NFD').r
 export const dupKey = (e) => `${e.type}|${normTitle(e.title)}`;
 
 export async function runImport(parsed, existing, { skipDuplicates = true } = {}, onProgress = () => {}) {
-  const have = new Set(existing.map(dupKey));
+  const byKey = new Map(existing.map((e) => [dupKey(e), e]));
+  const have = new Set(byKey.keys());
   const todo = parsed.items.filter((e) => !skipDuplicates || !have.has(dupKey(e)));
+  // Lo que ya está en tu diario: se completan las fechas que falten (útil al volver a importar TV Time o Netflix).
+  const dated = [];
+  for (const it of parsed.items) {
+    const ex = byKey.get(dupKey(it)); if (!ex) continue;
+    const patch = {};
+    const last = it.lastWatchedAt || it.finishedAt || '';
+    if (last && (!ex.lastWatchedAt || last > ex.lastWatchedAt)) patch.lastWatchedAt = last;
+    if (it.startedAt && (!ex.startedAt || it.startedAt < ex.startedAt)) patch.startedAt = it.startedAt;
+    if (ex.status === 'completed' && last && (!ex.finishedAt || ex.finishedAuto)) { patch.finishedAt = last; patch.finishedAuto = false; }
+    if (Object.keys(patch).length) dated.push([ex.id, patch]);
+  }
+  for (let i = 0; i < dated.length; i += 1) await updateEntry(dated[i][0], dated[i][1]).catch(() => {});
+  parsed.datesUpdated = dated.length;
   const clean = todo.map(({ id, _oldId, _note, _tvdb, _nfSeasons, ownerId, ownerName, ownerHandle, ownerPhoto, createdAt, updatedAt, ...rest }) => rest);
   onProgress('Guardando', 0, clean.length);
   const ids = await importEntries(clean, (d, t) => onProgress('Guardando', d, t));
@@ -402,7 +429,7 @@ async function syncImportedSeries(e) {
     ids: { ...(e.ids || {}), tvmaze: info.tvmazeId, tvdb: e.ids?.tvdb || info.tvdbId || '', imdb: e.ids?.imdb || info.imdbId || '' } };
   if (!e.cover && info.cover) patch.cover = info.cover;
   const status = seriesStatusFor({ ...e, watchedEpisodes: watched }, info, watched);
-  if (status !== e.status) { patch.status = status; if (status === 'completed' && !e.finishedAt) patch.finishedAt = e.startedAt || ''; }
+  if (status !== e.status) { patch.status = status; if (status === 'completed' && !e.finishedAt) patch.finishedAt = e.lastWatchedAt || ''; }
   await updateEntry(e.id, patch);
 }
 
