@@ -326,7 +326,7 @@ const EN = {
   'Arrastra y amplía la vista previa': 'Drag and zoom the preview', '(rueda o pellizco) para encuadrar justo lo que quieres compartir.': '(scroll or pinch) to frame exactly what you want to share.',
 
   'Seleccionar': 'Select', 'Terminar selección': 'Done selecting', 'Ninguno': 'None', 'Año…': 'Year…', 'Privacidad…': 'Privacy…', 'actualizados': 'updated', 'Eliminados': 'Deleted',
-  'Episodios vistos': 'Episodes watched', 'Solo 1 episodio': 'Only 1 episode', '1–2 episodios': '1–2 episodes', 'Hasta 5 episodios': 'Up to 5 episodes',
+  'Episodios vistos': 'Episodes watched', 'Ninguno marcado': 'None marked', 'Como mucho 1': 'At most 1', 'Como mucho 2': 'At most 2', 'Como mucho 5': 'At most 5',
   'Cualquier origen': 'Any source', 'Importados': 'Imported', 'Añadidos a mano': 'Added manually', 'Series con pocos episodios vistos: útil para limpiar importaciones': 'Series with few episodes watched: handy for cleaning up imports',
 
   // géneros
