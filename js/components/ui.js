@@ -272,8 +272,9 @@ export function ShareButtons({ title, url }) {
 }
 
 // Invítame a un café (Buy Me a Coffee).
-export function SupportButton({ size = '', label = 'Invítame a un café' }) {
+export function SupportButton({ size = '', label = 'Invítame a un café', quiet = false }) {
   if (!SUPPORT_URL) return null;
+  if (quiet) return html`<a class="coffee-quiet" href=${SUPPORT_URL} target="_blank" rel="noopener"><${Icon} name="coffee" /> ${label}</a>`;
   return html`<a class=${'btn coffee ' + size} href=${SUPPORT_URL} target="_blank" rel="noopener" onClick=${() => sfx.pop()}><${Icon} name="coffee" /> ${label}</a>`;
 }
 
