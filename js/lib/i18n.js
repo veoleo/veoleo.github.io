@@ -299,6 +299,20 @@ const EN = {
 
   'Sonido activado': 'Sound on', 'Sonido silenciado': 'Sound muted',
 
+
+  // invitados y «gratis para siempre»
+  'Probar sin cuenta': 'Try it without an account', 'Con una biblioteca de ejemplo · en un clic': 'With a sample library · one click', 'o crea tu diario': 'or create your diary',
+  'Gratis para siempre · Sin anuncios · Sin tarjeta': 'Free forever · No ads · No credit card', 'Gratis para siempre': 'Free forever',
+  'Veoleo es y será gratis para siempre: sin anuncios, sin suscripciones y sin vender tus datos.': 'Veoleo is and will always be free: no ads, no subscriptions and no selling your data.',
+  'Modo invitado.': 'Guest mode.', 'Prueba todo lo que quieras: Veoleo es gratis para siempre.': 'Try everything you want: Veoleo is free forever.',
+  'Crea tu cuenta para no perder tu diario.': "Create your account so you don't lose your diary.", 'Guardar mi diario': 'Save my diary', 'Guarda tu diario': 'Save your diary',
+  'Crea tu cuenta y todo lo que has hecho como invitado se queda: títulos, episodios, notas y listas. Sin anuncios ni suscripciones, nunca.': 'Create your account and everything you did as a guest stays: titles, episodes, notes and lists. No ads or subscriptions, ever.',
+  'Crear cuenta y guardar': 'Create account and save', 'Diario guardado': 'Diary saved', 'Bienvenida': 'Welcome', 'Invitado': 'Guest',
+  'Para': 'To', 'publicar': 'post', 'comentar': 'comment', 'responder': 'reply', 'necesitas una cuenta (gratis para siempre). Tu diario de prueba se conserva.': 'you need an account (free forever). Your trial diary is kept.',
+  'Si cierras la sesión de invitado perderás este diario de prueba. ¿Seguro?': "If you sign out of guest mode you'll lose this trial diary. Are you sure?",
+  'Esa cuenta ya existe. Cierra la sesión de invitado y entra con ella (el diario de prueba no se pasa a una cuenta que ya existe).': "That account already exists. Sign out of guest mode and sign in with it (the trial diary can't be moved to an existing account).",
+  'El modo invitado no está disponible ahora mismo.': 'Guest mode is not available right now.', 'Esta cuenta ya está guardada.': 'This account is already saved.',
+
   // géneros
   'Acción': 'Action', 'Acción y aventura': 'Action & adventure', 'Aventura': 'Adventure', 'Animación': 'Animation', 'Anime': 'Anime', 'Biografía': 'Biography', 'Comedia': 'Comedy',
   'Crimen': 'Crime', 'Documental': 'Documentary', 'Drama': 'Drama', 'Familia': 'Family', 'Fantasía': 'Fantasy', 'Historia': 'History', 'Terror': 'Horror', 'Musical': 'Musical',
@@ -310,6 +324,7 @@ const EN = {
 };
 
 const PATTERNS = [
+  [/^(\d+) portadas? encontradas?$/, (m, n) => `${n} cover${n === '1' ? '' : 's'} found`],
   [/^Este año · (\d{4})$/, 'This year · $1'], [/^Año · (\d{4})$/, 'Year · $1'], [/^Quitar de (\d{4})$/, 'Remove from $1'],
   [/^Ver las (\d+)$/, 'See all $1'],
   [/^¿Abandonar (.+)\? Pasará a tu lista Abandonadas y dejará de salir aquí\.$/, 'Drop $1? It will move to your Dropped list and stop showing here.'],

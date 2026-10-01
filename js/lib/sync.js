@@ -1,7 +1,7 @@
 // Sincronización de series con su emisión real (TVMaze):
 //  · reconcilia estados (Viendo → Al día → Vista) al entrar en la app
 //  · calcula tus próximos episodios y los emitidos que te faltan por ver
-import { showInfo, seriesStatusFor, memoize, overviewFor, canonPlatform } from './metadata.js';
+import { showInfo, seriesStatusFor, memoize, overviewFor, canonPlatform, bookCover, cleanBookTitle } from './metadata.js';
 import { updateEntry } from './db.js';
 import { todayISO } from './utils.js';
 
@@ -83,4 +83,20 @@ export function myEpisodes(entries) {
     pending.sort((a, b) => b.airdate.localeCompare(a.airdate));
     return { upcoming, pending };
   });
+}
+
+// Libros y audiolibros sin portada (p. ej. importados de Goodreads): se buscan solos al entrar, poco a poco.
+let coversTried = new Set();
+export async function fillMissingCovers(entries) {
+  const todo = entries.filter((e) => (e.type === 'book' || e.type === 'audiobook') && !e.cover && !e.coverMissing && !coversTried.has(e.id)).slice(0, 40);
+  let n = 0;
+  await pool(todo, 3, async (e) => {
+    coversTried.add(e.id);
+    const cover = await bookCover(e).catch(() => '');
+    const title = cleanBookTitle(e.title);
+    const patch = cover ? { cover } : { coverMissing: true };
+    if (title !== e.title) patch.title = title;
+    await updateEntry(e.id, patch); if (cover) n++;
+  });
+  return n;
 }

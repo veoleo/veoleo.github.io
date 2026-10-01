@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, updateProfile as updateAuthProfile, sendPasswordResetEmail,
+  signInAnonymously, linkWithCredential, linkWithPopup, linkWithRedirect, EmailAuthProvider,
 } from 'firebase/auth';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
@@ -58,6 +59,8 @@ export function authErrorText(e) {
   const c = e?.code || '';
   return {
     'auth/invalid-credential': 'Email o contraseña incorrectos.',
+    'auth/admin-restricted-operation': 'El modo invitado no está disponible ahora mismo.',
+    'auth/provider-already-linked': 'Esta cuenta ya está guardada.',
     'auth/wrong-password': 'Contraseña incorrecta.',
     'auth/user-not-found': 'No existe ninguna cuenta con ese email.',
     'auth/email-already-in-use': 'Ya hay una cuenta con ese email.',
@@ -71,10 +74,66 @@ export function authErrorText(e) {
 
 /* ───────────── Perfil ───────────── */
 
+// Probar sin cuenta: sesión de invitado con una biblioteca de ejemplo (gratis, sin datos personales).
+export const loginGuest = () => signInAnonymously(auth);
+export const isGuest = () => !!auth.currentUser?.isAnonymous;
+
+// Convertir la sesión de invitado en una cuenta real conservando todo lo hecho.
+async function promoteGuest(user, name) {
+  const displayName = (name || user.displayName || '').trim() || 'Fan de Veoleo';
+  await updateDoc(doc(db, 'users', user.uid), { guest: false, displayName, photoURL: user.photoURL || getState().profile?.photoURL || '' });
+  setState({ profile: { ...getState().profile, guest: false, displayName, photoURL: user.photoURL || getState().profile?.photoURL || '' }, user: auth.currentUser });
+  const h = slug(displayName).replace(/-/g, '').slice(0, 16);
+  if (h.length >= 3) await changeHandle(h).catch(() => changeHandle(h + Math.floor(100 + Math.random() * 900)).catch(() => {}));
+}
+const linkError = (e) => {
+  if (e?.code === 'auth/credential-already-in-use' || e?.code === 'auth/email-already-in-use') {
+    return new Error('Esa cuenta ya existe. Cierra la sesión de invitado y entra con ella (el diario de prueba no se pasa a una cuenta que ya existe).');
+  }
+  return e;
+};
+export async function linkGuestEmail(name, email, pass) {
+  try {
+    const cred = await linkWithCredential(auth.currentUser, EmailAuthProvider.credential(email, pass));
+    if (name) await updateAuthProfile(cred.user, { displayName: name });
+    await promoteGuest(cred.user, name);
+  } catch (e) { throw linkError(e); }
+}
+export async function linkGuestGoogle() {
+  const provider = new GoogleAuthProvider();
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone;
+  try {
+    if (standalone) return await linkWithRedirect(auth.currentUser, provider);
+    const res = await linkWithPopup(auth.currentUser, provider);
+    const g = res.user.providerData.find((p) => p.providerId === 'google.com');
+    if (g && !res.user.displayName) await updateAuthProfile(res.user, { displayName: g.displayName, photoURL: g.photoURL });
+    await promoteGuest({ ...res.user, displayName: res.user.displayName || g?.displayName, photoURL: res.user.photoURL || g?.photoURL }, res.user.displayName || g?.displayName);
+  } catch (e) { throw linkError(e); }
+}
+
 export async function ensureProfile(user) {
   const ref = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data();
+  if (snap.exists()) {
+    const p = snap.data();
+    // Vuelta de vincular con Google por redirección (app instalada): la cuenta ya no es de invitado.
+    if (p.guest && !user.isAnonymous) {
+      const g = user.providerData.find((x) => x.providerId === 'google.com');
+      const displayName = user.displayName || g?.displayName || p.displayName;
+      await updateDoc(ref, { guest: false, displayName, photoURL: user.photoURL || g?.photoURL || '' }).catch(() => {});
+      return { ...p, guest: false, displayName, photoURL: user.photoURL || g?.photoURL || '' };
+    }
+    return p;
+  }
+  if (user.isAnonymous) {
+    let handle = 'invitado' + Math.floor(100000 + Math.random() * 900000);
+    await setDoc(doc(db, 'handles', handle), { uid: user.uid }).catch(() => { handle = ''; });
+    const profile = { uid: user.uid, displayName: 'Invitado', handle, photoURL: '', bio: '', challenges: {}, guest: true, createdAt: serverTimestamp() };
+    await setDoc(ref, profile);
+    const { SAMPLE_ENTRIES } = await import('./sample.js');
+    await importEntries(SAMPLE_ENTRIES).catch((e) => console.warn('[Veoleo] ejemplo', e.message));
+    return profile;
+  }
   // El @usuario nunca se deriva del email para no exponerlo.
   const name = user.displayName || pendingName;
   const base = (slug(name).replace(/-/g, '') || 'fan').slice(0, 16).padEnd(3, '0');
@@ -129,11 +188,11 @@ export async function searchUsers(prefix) {
   const p = slug(prefix).replace(/-/g, '');
   if (!p) return recentUsers();
   const q = query(collection(db, 'users'), where('handle', '>=', p), where('handle', '<=', p + ''), limit(20));
-  return (await getDocs(q)).docs.map((d) => d.data());
+  return (await getDocs(q)).docs.map((d) => d.data()).filter((u) => !u.guest);
 }
 export async function recentUsers(n = 24) {
-  const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(n));
-  return (await getDocs(q)).docs.map((d) => d.data());
+  const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(n + 20));
+  return (await getDocs(q)).docs.map((d) => d.data()).filter((u) => !u.guest).slice(0, n);
 }
 
 /* ───────────── Ajustes privados ───────────── */
@@ -203,7 +262,7 @@ function clean(o) {
 }
 
 // Privacidad por defecto (Ajustes → Privacidad).
-export const defaultVisibility = () => (getState().settings?.privateByDefault ? 'private' : 'public');
+export const defaultVisibility = () => (getState().settings?.privateByDefault || auth.currentUser?.isAnonymous ? 'private' : 'public');
 
 export async function createEntry(data) {
   const uid = uidOrThrow();

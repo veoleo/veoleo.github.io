@@ -874,3 +874,47 @@ export async function allAiredPatch(e) {
     ids: { ...(e.ids || {}), tvmaze: info.tvmazeId, tvdb: e.ids?.tvdb || info.tvdbId || '', imdb: e.ids?.imdb || info.imdbId || '' },
   };
 }
+
+/* ── portadas de libros sin clave: Open Library (ISBN), Apple Books (ISBN y título), Open Library (título) ── */
+const nt = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+// Títulos «sucios» de algunas exportaciones: «[ THE INFINITIES ] By Banville, John ( AUTHOR ) Mar-2010[ Paperback ]»
+export function cleanBookTitle(t) {
+  let s = String(t || '');
+  const m = s.match(/^\s*\[\s*(.+?)\s*\]\s*By\b/i);
+  if (m) s = m[1];
+  s = s.replace(/\[\s*(paperback|hardcover|kindle edition)\s*\]/gi, '').replace(/\((paperback|hardcover|kindle edition)\)/gi, '').trim();
+  if (s === s.toUpperCase() && /[A-Z]/.test(s)) s = s.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+  return s;
+}
+function imageExists(url) {
+  return new Promise((resolve) => {
+    const im = new Image();
+    const t = setTimeout(() => resolve(false), 8000);
+    im.onload = () => { clearTimeout(t); resolve(im.naturalWidth > 10); };
+    im.onerror = () => { clearTimeout(t); resolve(false); };
+    im.src = url;
+  });
+}
+const appleArt = (u) => (u ? u.replace(/\/\d+x\d+bb\.(jpg|png)$/, '/600x600bb.jpg') : '');
+export async function bookCover(e) {
+  const isbn = String(e.isbn || '').replace(/[^0-9X]/gi, '');
+  const title = cleanBookTitle(e.title);
+  const author = (e.creators || [])[0] || '';
+  const same = (a) => { const x = nt(a).replace(/\s*(a novel|novel)$/, ''), y = nt(title); return x && y && (x === y || x.startsWith(y + ' ') || y.startsWith(x + ' ')); };
+  if (isbn) {
+    const ol = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`;
+    if (await imageExists(ol)) return ol;
+    const ap = await getJSON(`https://itunes.apple.com/lookup?isbn=${isbn}`).catch(() => null);
+    const art = ap?.results?.find((r) => r.artworkUrl100)?.artworkUrl100;
+    if (art) return appleArt(art);
+  }
+  const entity = e.type === 'audiobook' ? 'audiobook' : 'ebook';
+  const q = encodeURIComponent(`${title} ${author}`.trim());
+  const ap = await getJSON(`https://itunes.apple.com/search?term=${q}&entity=${entity}&limit=5`).catch(() => null);
+  const hit = (ap?.results || []).find((r) => same(r.trackName || r.collectionName));
+  if (hit?.artworkUrl100) return appleArt(hit.artworkUrl100);
+  const ol = await getJSON(`https://openlibrary.org/search.json?title=${encodeURIComponent(title)}${author ? `&author=${encodeURIComponent(author)}` : ''}&fields=title,cover_i&limit=5`).catch(() => null);
+  const doc = (ol?.docs || []).find((d) => d.cover_i && same(d.title));
+  if (doc) return `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
+  return '';
+}

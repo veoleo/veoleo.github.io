@@ -1,6 +1,6 @@
 // Importación y exportación de datos: TV Time, Letterboxd, Goodreads, IMDb, copias Veoleo, CSV.
 import { download, loadScript, normGenres, todayISO, uniq } from './utils.js';
-import { epCode, searchMedia, showInfo, seriesStatusFor } from './metadata.js';
+import { epCode, searchMedia, showInfo, seriesStatusFor, bookCover, cleanBookTitle } from './metadata.js';
 import { getNotesBulk, importEntries, saveNote, updateEntry } from './db.js';
 
 /* ───────────── CSV ───────────── */
@@ -381,8 +381,18 @@ export async function autoEnrich(items, settings, onProgress = () => {}) {
           const r = await fetch(`https://api.tvmaze.com/lookup/shows?thetvdb=${e.ids.tvdb}`);
           if (r.ok) { const s = await r.json(); hit = { cover: s.image?.original || s.image?.medium || '', tvmazeId: String(s.id), imdbId: s.externals?.imdb || '', year: s.premiered ? Number(s.premiered.slice(0, 4)) : null, genres: normGenres(s.genres), network: s.webChannel?.name || s.network?.name || '' }; }
         }
+        // Libros y audiolibros: portada por ISBN / título sin depender de Google Books (limita sin clave).
+        if (!hit && !e.cover && (e.type === 'book' || e.type === 'audiobook')) {
+          const cover = await bookCover(e).catch(() => '');
+          const title = cleanBookTitle(e.title);
+          if (cover || title !== e.title) {
+            const fix = { ...(cover ? { cover } : {}), ...(title !== e.title ? { title } : {}) };
+            await updateEntry(e.id, fix); Object.assign(e, fix);
+          }
+          if (cover) { onProgress(++done, total); continue; }
+        }
         if (!hit && !e.cover) {
-          const res = await searchMedia(e.type, e.title, settings);
+          const res = await searchMedia(e.type, cleanBookTitle(e.title), settings);
           hit = res.find((x) => normTitle(x.title) === normTitle(e.title) && (!e.year || !x.year || Math.abs(x.year - e.year) <= 1))
             || res.find((x) => !e.year || !x.year || Math.abs(x.year - e.year) <= 1) || res[0];
           // «Serie: Episodio» que Netflix lista sin temporada y se tomó por película: si la serie existe, se corrige.
