@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>TVDaily — tu diario de series, cine y libros</title>
+  <meta name="description" content="Tracker cinematográfico de series, películas, libros y audiolibros. Notas exportables a Obsidian, listas, retos y comunidad." />
+  <meta name="theme-color" content="#f6eedf" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/app.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "preact-standalone": "https://unpkg.com/htm@3.1.1/preact/standalone.module.js",
+      "firebase/app": "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js",
+      "firebase/auth": "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js",
+      "firebase/firestore": "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js",
+      "marked": "https://cdn.jsdelivr.net/npm/marked@12.0.2/lib/marked.esm.js",
+      "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.es.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="fx-dots" aria-hidden="true"></div>
+  <div class="fx-paper" aria-hidden="true"></div>
+  <div id="app">
+    <div class="boot"><span>TV</span>DAILY</div>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

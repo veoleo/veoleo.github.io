@@ -1,0 +1,87 @@
+rules_version = '2';
+
+// Reglas de seguridad de TVDaily.
+// - Perfiles: visibles para usuarios con sesión; cada cual edita el suyo.
+// - Entradas: públicas o privadas (visibility). Solo la dueña las escribe.
+// - Notas: documento aparte para poder ser privadas aunque la entrada sea pública.
+// - Comentarios y likes: en entradas que puedes leer.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function authed() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function entryReadable(entryId) {
+      let e = get(/databases/$(database)/documents/entries/$(entryId)).data;
+      return e.visibility == 'public' || e.ownerId == uid();
+    }
+
+    match /users/{userId} {
+      allow read: if authed();
+      allow create: if authed() && userId == uid() && request.resource.data.uid == uid();
+      allow update: if authed() && userId == uid() && request.resource.data.uid == uid();
+      allow delete: if authed() && userId == uid();
+
+      match /private/{doc} {
+        allow read, write: if authed() && userId == uid();
+      }
+    }
+
+    // Reserva de @usuario único.
+    match /handles/{handle} {
+      allow read: if authed();
+      allow create: if authed() && request.resource.data.uid == uid() && handle.matches('^[a-z0-9]{3,24}$');
+      allow update: if authed() && resource.data.uid == uid() && request.resource.data.uid == uid();
+      allow delete: if authed() && resource.data.uid == uid();
+    }
+
+    match /entries/{entryId} {
+      allow read: if authed() && (resource.data.visibility == 'public' || resource.data.ownerId == uid());
+      allow create: if authed() && request.resource.data.ownerId == uid()
+        && request.resource.data.visibility in ['public', 'private']
+        && request.resource.data.type in ['series', 'movie', 'book', 'audiobook'];
+      allow update: if authed() && resource.data.ownerId == uid()
+        && request.resource.data.ownerId == uid()
+        && request.resource.data.visibility in ['public', 'private'];
+      allow delete: if authed() && resource.data.ownerId == uid();
+
+      match /comments/{commentId} {
+        allow read: if authed() && entryReadable(entryId);
+        allow create: if authed() && entryReadable(entryId)
+          && request.resource.data.authorId == uid()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() < 2000;
+        allow delete: if authed() && (resource.data.authorId == uid()
+          || get(/databases/$(database)/documents/entries/$(entryId)).data.ownerId == uid());
+      }
+
+      match /likes/{likerId} {
+        allow read: if authed() && entryReadable(entryId);
+        allow create, delete: if authed() && likerId == uid() && entryReadable(entryId);
+      }
+    }
+
+    match /notes/{entryId} {
+      allow read: if authed() && (resource.data.ownerId == uid() || resource.data.isPublic == true);
+      allow create: if authed() && request.resource.data.ownerId == uid()
+        && get(/databases/$(database)/documents/entries/$(entryId)).data.ownerId == uid();
+      allow update: if authed() && resource.data.ownerId == uid() && request.resource.data.ownerId == uid();
+      allow delete: if authed() && resource.data.ownerId == uid();
+    }
+
+    match /lists/{listId} {
+      allow read: if authed() && (resource.data.isPublic == true || resource.data.ownerId == uid());
+      allow create: if authed() && request.resource.data.ownerId == uid();
+      allow update: if authed() && resource.data.ownerId == uid() && request.resource.data.ownerId == uid();
+      allow delete: if authed() && resource.data.ownerId == uid();
+    }
+
+    match /follows/{followId} {
+      allow read: if authed();
+      allow create: if authed() && request.resource.data.followerId == uid()
+        && followId == uid() + '_' + request.resource.data.followingId
+        && request.resource.data.followingId != uid();
+      allow delete: if authed() && resource.data.followerId == uid();
+    }
+  }
+}
