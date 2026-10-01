@@ -20,6 +20,7 @@ import { ListsPage, ListPage } from './pages/lists.js';
 import { ChallengesPage } from './pages/challenges.js';
 import { ExplorePage, ProfilePage, PostPage } from './pages/social.js';
 import { AboutPage } from './pages/about.js';
+import { GraphPage } from './pages/graph.js';
 import { GuestBanner, guestLogout } from './components/guest.js';
 import { SettingsPage } from './pages/settings.js';
 import { NewsPage } from './pages/news.js';
@@ -65,7 +66,7 @@ function Palette({ onClose }) {
   const input = useRef();
   useEffect(() => { input.current?.focus(); sfx.open(); }, []);
   const ql = q.trim().toLowerCase();
-  const nav = [...NAV, ['search', 'search', 'Buscar', 'search'], ['stats', 'stats', 'Estadísticas', 'chart'], ['data', 'data', 'Importar y exportar', 'database'], ['settings', 'settings', 'Ajustes', 'settings'], ['about', 'about', 'Qué es Veoleo', 'info']]
+  const nav = [...NAV, ['search', 'search', 'Buscar', 'search'], ['stats', 'stats', 'Estadísticas', 'chart'], ['data', 'data', 'Importar y exportar', 'database'], ['settings', 'settings', 'Ajustes', 'settings'], ['graph', 'graph', 'Grafo', 'graph'], ['about', 'about', 'Qué es Veoleo', 'info']]
     .filter(([, , l]) => !ql || l.toLowerCase().includes(ql)).map(([k, path, label, icon]) => ({ kind: 'nav', label, icon, href: '#/' + path }));
   const mine = ql ? entries.filter((e) => e.title.toLowerCase().includes(ql)).slice(0, 8).map((e) => ({ kind: 'entry', e, label: e.title, href: `#/item/${e.id}` })) : [];
   const searches = ql.length > 1 ? Object.values(TYPES).map((t) => ({ kind: 'search', label: `Buscar “${q.trim()}” en ${t.plural.toLowerCase()}`, icon: t.ico, href: `#/search?type=${t.key}&q=${encodeURIComponent(q.trim())}` })) : [];
@@ -123,6 +124,7 @@ function Header({ route, onPalette }) {
             <div class="head"><div style="font-weight:600">${profile?.displayName}</div><div class="count">@${profile?.handle}</div></div>
             <a href=${`#/u/${user.uid}`}><${Icon} name="user" /> Mi perfil</a>
             <a href="#/stats"><${Icon} name="chart" /> Estadísticas</a>
+            <a href="#/graph"><${Icon} name="graph" /> Grafo</a>
             <a href="#/data"><${Icon} name="database" /> Importar y exportar</a>
             <a href="#/settings"><${Icon} name="settings" /> Ajustes</a>
             <a href="#/about"><${Icon} name="info" /> Qué es Veoleo</a>
@@ -139,7 +141,7 @@ function Header({ route, onPalette }) {
 const MORE = [
   ['data?go=import', 'Importar', 'upload'], ['data?go=export', 'Exportar', 'download'],
   ['discover', 'Novedades', 'spark'], ['news', 'Noticias', 'news'], ['explore', 'Comunidad', 'users'], ['lists', 'Listas', 'list'],
-  ['challenges', 'Retos', 'trophy'], ['stats', 'Estadísticas', 'chart'],
+  ['challenges', 'Retos', 'trophy'], ['stats', 'Estadísticas', 'chart'], ['graph', 'Grafo', 'graph'],
   ['settings', 'Ajustes', 'settings'], ['about', 'Qué es Veoleo', 'info'],
 ];
 function MoreSheet({ onClose }) {
@@ -196,6 +198,7 @@ function Page({ route }) {
     case 'settings': return html`<${SettingsPage} />`;
     case 'post': return html`<${PostPage} key=${b} id=${b} />`;
     case 'about': return html`<${AboutPage} />`;
+    case 'graph': return html`<${GraphPage} />`;
     default: return html`<div class="page wrap"><div class="empty"><div class="kicker">404</div><h1 class="display" style="margin:20px 0">Fuera de plano</h1><div class="row"><a class="btn" href="#/">Volver al inicio</a></div></div></div>`;
   }
 }
