@@ -1,11 +1,13 @@
 // Punto de entrada: auth, shell, navegación, paleta de comandos e intro.
-import { html, render, useState, useEffect, useRef } from 'preact-standalone';
+import { html, render, useState, useEffect, useRef, Component } from 'preact-standalone';
 import { useStore, setState, toast } from './lib/store.js';
-import { onAuth, ensureProfile, loadSettings, watchMine, logout } from './lib/db.js';
+import { onAuth, ensureProfile, loadSettings, watchMine, logout, loadSavedNews } from './lib/db.js';
+import { reconcileSeries, resetReconcile } from './lib/sync.js';
 import { useRoute, go } from './lib/router.js';
 import { sfx, unlockAudio, isSoundOn, setSound } from './lib/sound.js';
 import { observeReveal, trackCursor } from './lib/fx.js';
-import { Avatar, Toasts, Icon, Cover } from './components/ui.js';
+import { Avatar, Toasts, Icon, Cover, Footer, SupportButton } from './components/ui.js';
+import { SUPPORT_URL } from './config.js';
 import { TYPES, statusLabel } from './lib/utils.js';
 import { AuthPage } from './pages/auth.js';
 import { HomePage } from './pages/home.js';
@@ -20,10 +22,12 @@ import { SettingsPage } from './pages/settings.js';
 import { NewsPage } from './pages/news.js';
 import { StatsPage } from './pages/stats.js';
 import { DataPage } from './pages/data.js';
+import { GuidePage } from './pages/guide.js';
 
 const NAV = [
   ['home', '', 'Inicio', 'home'],
   ['discover', 'discover', 'Novedades', 'spark'],
+  ['guide', 'guide', 'Guía TV', 'guide'],
   ['news', 'news', 'Noticias', 'news'],
   ['library', 'library', 'Biblioteca', 'grid'],
   ['lists', 'lists', 'Listas', 'list'],
@@ -100,7 +104,8 @@ function Header({ route, onPalette }) {
   const active = route.name;
   return html`<header class="header">
     <div class="wrap">
-      <a class="logo" href="#/"><i></i>TVDaily</a>
+      ${active !== 'home' && html`<button class="btn icon glass back" onClick=${() => { sfx.click(); if (history.length > 1) history.back(); else location.hash = '#/'; }} title="Atrás" aria-label="Atrás"><${Icon} name="back" /></button>`}
+      <a class="logo" href="#/"><i></i><span class="lt">TVDaily</span></a>
       <nav class="nav">${NAV.map(([k, path, label]) => html`<a key=${k} href=${'#/' + path} class=${active === k ? 'on' : ''} onMouseEnter=${() => sfx.hover()}>${label}</a>`)}</nav>
       <div class="header-actions">
         <button class="btn sm glass hide-sm" onClick=${onPalette} title="Buscar (⌘K)"><${Icon} name="search" size=${14} /> Buscar <span class="kbd">⌘K</span></button>
@@ -114,6 +119,7 @@ function Header({ route, onPalette }) {
             <a href="#/stats"><${Icon} name="chart" /> Estadísticas</a>
             <a href="#/data"><${Icon} name="database" /> Importar y exportar</a>
             <a href="#/settings"><${Icon} name="settings" /> Ajustes</a>
+            ${SUPPORT_URL && html`<a href=${SUPPORT_URL} target="_blank" rel="noopener" style="color:#ffdd00"><${Icon} name="coffee" /> Invítame a un café</a>`}
             <button onClick=${() => { sfx.close(); logout(); }}><${Icon} name="logout" /> Cerrar sesión</button>
           </div>`}
         </div>
@@ -123,7 +129,7 @@ function Header({ route, onPalette }) {
 }
 
 function BottomNav({ route }) {
-  const items = [['home', '', 'Inicio', 'home'], ['discover', 'discover', 'Novedades', 'spark'], ['search', 'search', 'Buscar', 'search'], ['library', 'library', 'Biblioteca', 'grid'], ['news', 'news', 'Noticias', 'news']];
+  const items = [['home', '', 'Inicio', 'home'], ['guide', 'guide', 'Guía', 'guide'], ['search', 'search', 'Buscar', 'search'], ['library', 'library', 'Biblioteca', 'grid'], ['news', 'news', 'Noticias', 'news']];
   return html`<nav class="bottom-nav">${items.map(([k, path, label, icon]) => html`
     <a key=${k} href=${'#/' + path} class=${route.name === k ? 'on' : ''}><${Icon} name=${icon} />${label}</a>`)}</nav>`;
 }
@@ -134,6 +140,7 @@ function Page({ route }) {
     case 'home': return html`<${HomePage} />`;
     case 'discover': return html`<${DiscoverPage} route=${route} />`;
     case 'news': return html`<${NewsPage} route=${route} />`;
+    case 'guide': return html`<${GuidePage} route=${route} />`;
     case 'search': return html`<${SearchPage} route=${route} />`;
     case 'library': return html`<${LibraryPage} route=${route} />`;
     case 'item': return html`<${ItemPage} key=${b} id=${b} />`;
@@ -146,6 +153,18 @@ function Page({ route }) {
     case 'u': return html`<${ProfilePage} key=${b} uid=${b} route=${route} />`;
     case 'settings': return html`<${SettingsPage} />`;
     default: return html`<div class="page wrap"><div class="empty"><div class="kicker">404</div><h1 class="display" style="margin:20px 0">Fuera de plano</h1><div class="row"><a class="btn" href="#/">Volver al inicio</a></div></div></div>`;
+  }
+}
+
+// Si una pantalla falla, se muestra un aviso en lugar de romper la app.
+class Boundary extends Component {
+  constructor() { super(); this.state = { err: null }; }
+  componentDidCatch(err) { console.error('[TVDaily] pantalla', err); this.setState({ err }); }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return html`<div class="page wrap"><div class="empty"><div class="kicker" style="--c:var(--red)">Error</div>
+      <h1 class="h1" style="margin:18px 0">Esta pantalla ha fallado</h1><p class="lead">${String(this.state.err?.message || this.state.err)}</p>
+      <div class="row" style="margin-top:24px"><button class="btn" onClick=${() => this.setState({ err: null })}>Reintentar</button><a class="btn ghost" href="#/" onClick=${() => this.setState({ err: null })}>Ir al inicio</a></div></div></div>`;
   }
 }
 
@@ -163,11 +182,12 @@ function App() {
     return () => window.removeEventListener('keydown', k);
   }, []);
   if (!st.authReady) return html`<div class="boot"><b>TVDAILY</b></div>`;
-  if (!st.user) return html`<${AuthPage} /><${Toasts} />`;
+  if (!st.user) return html`<${Boundary}><${AuthPage} /></${Boundary}><${Toasts} />`;
   return html`
     <${Intro} />
     <${Header} route=${route} onPalette=${() => setPalette(true)} />
-    <main key=${route.parts.join('/')}><${Page} route=${route} /></main>
+    <main key=${route.parts.join('/')}><${Boundary}><${Page} route=${route} /></${Boundary}></main>
+    <${Footer} />
     <${BottomNav} route=${route} />
     ${palette && html`<${Palette} onClose=${() => setPalette(false)} />`}
     <${Toasts} />`;
@@ -181,10 +201,12 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 let stop = null;
+let syncTimer = null;
+window.addEventListener('unhandledrejection', (e) => console.warn('[TVDaily] promesa sin capturar', e.reason));
 onAuth(async (user) => {
-  stop?.(); stop = null;
+  stop?.(); stop = null; clearTimeout(syncTimer); resetReconcile();
   if (!user) {
-    setState({ authReady: true, user: null, profile: null, settings: {}, entries: [], entriesReady: false, lists: [], following: [] });
+    setState({ authReady: true, user: null, profile: null, settings: {}, entries: [], entriesReady: false, lists: [], following: [], savedNews: [] });
     return;
   }
   setState({ user });
@@ -197,6 +219,16 @@ onAuth(async (user) => {
     toast('No se pudo cargar tu perfil: ' + e.message, 'err', 6000);
   }
   stop = watchMine(user.uid);
+  loadSavedNews(user.uid).then((savedNews) => setState({ savedNews }));
+  // Sincroniza estados de series con su emisión unos segundos después de entrar (sin bloquear).
+  syncTimer = setTimeout(async () => {
+    const { getState } = await import('./lib/store.js');
+    for (let i = 0; i < 10 && !getState().entriesReady; i++) await new Promise((r) => setTimeout(r, 2000));
+    if (!getState().entriesReady || getState().user?.uid !== user.uid) return;
+    const moved = await reconcileSeries(getState().entries).catch(() => null);
+    const n = moved ? moved.completed.length + moved.up_to_date.length : 0;
+    if (n) toast(`${n} ${n === 1 ? 'serie actualizada' : 'series actualizadas'}: ${[...moved.completed.map((t) => t + ' → Vista'), ...moved.up_to_date.map((t) => t + ' → Al día')].slice(0, 3).join(' · ')}`, 'ok', 6000);
+  }, 4000);
 });
 
 const root = document.getElementById('app');

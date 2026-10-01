@@ -13,3 +13,6 @@ export const firebaseConfig = {
 // Con ella las búsquedas de series y películas traen pósters HD, fondos,
 // tráilers y reparto. Cada usuario puede poner la suya en Ajustes.
 export const SHARED_TMDB_KEY = '';
+
+// Página de apoyo (Buy Me a Coffee).
+export const SUPPORT_URL = 'https://buymeacoffee.com/mariawildet';
