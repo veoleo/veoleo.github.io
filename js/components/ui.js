@@ -1,11 +1,12 @@
 // Componentes de interfaz reutilizables.
 import { html, useState, useEffect, useLayoutEffect, useRef } from 'preact-standalone';
-import { TYPES, statusLabel, paletteFor, initials } from '../lib/utils.js';
+import { TYPES, statusLabel, paletteFor, initials, img } from '../lib/utils.js';
 import { sfx } from '../lib/sound.js';
 import { burstAt, flash, scramble, countUp } from '../lib/fx.js';
 import { useStore } from '../lib/store.js';
 import { watchProviders, platformsOf, hasTmdb } from '../lib/metadata.js';
 import { Icon } from './icons.js';
+import { SUPPORT_URL } from '../config.js';
 
 export { html, Icon };
 
@@ -82,11 +83,18 @@ export function GenPoster({ title, type }) {
     <span>${TYPES[type]?.label || 'TVDaily'}</span><b>${title}</b></div>`;
 }
 
-export function Cover({ src, title, type, alt = '' }) {
-  const [err, setErr] = useState(false);
-  useEffect(() => setErr(false), [src]);
-  if (!src || err) return html`<${GenPoster} title=${title} type=${type} />`;
-  return html`<img src=${src} alt=${alt || title} loading="lazy" decoding="async" referrerpolicy="no-referrer" onError=${() => setErr(true)} />`;
+// Imagen redimensionada; si falla, la original; si también falla, póster generado.
+export function Cover({ src, title, type, alt = '', w = 360 }) {
+  const [stage, setStage] = useState(0);
+  useEffect(() => setStage(0), [src]);
+  if (!src || stage > 1) return html`<${GenPoster} title=${title} type=${type} />`;
+  return html`<img src=${stage === 0 ? img(src, w) : src} alt=${alt || title} loading="lazy" decoding="async" referrerpolicy="no-referrer" onError=${() => setStage(stage + 1)} />`;
+}
+export function BgImg({ src, w = 1400, style = '', alt = '' }) {
+  const [stage, setStage] = useState(0);
+  useEffect(() => setStage(0), [src]);
+  if (!src || stage > 1) return null;
+  return html`<img src=${stage === 0 ? img(src, w) : src} alt=${alt} style=${style} decoding="async" referrerpolicy="no-referrer" onError=${() => setStage(stage + 1)} />`;
 }
 
 /* ── tarjeta de póster ── */
@@ -230,7 +238,7 @@ export function TypeBadge({ type }) {
   return html`<span class="tag" style=${`--c:${T.color}`}>${T.label}</span>`;
 }
 
-const ST_C = { completed: 'var(--teal)', in_progress: 'var(--yellow)', planned: 'var(--pink)', abandoned: 'var(--muted)' };
+const ST_C = { completed: 'var(--teal)', up_to_date: 'var(--blue)', in_progress: 'var(--yellow)', planned: 'var(--pink)', abandoned: 'var(--muted)' };
 export function StatusBadge({ status, type }) {
   return html`<span class="tag" style=${`--c:${ST_C[status]}`}>${statusLabel(status, type)}</span>`;
 }
@@ -260,6 +268,29 @@ export function ShareButtons({ title, url }) {
     <a title="X" aria-label="X" href=${`https://x.com/intent/post?text=${t}&url=${u}`} target="_blank" rel="noopener"><${Icon} name="x" size=${14} /></a>
     <button title="Copiar enlace" aria-label="Copiar enlace" onClick=${async (e) => { e.preventDefault(); try { await navigator.clipboard.writeText(url); (await import('../lib/store.js')).toast('Enlace copiado', 'ok'); sfx.pop(); } catch { /* sin portapapeles */ } }}><${Icon} name="link" size=${16} /></button>
   </div>`;
+}
+
+// Invítame a un café (Buy Me a Coffee).
+export function SupportButton({ size = '', label = 'Invítame a un café' }) {
+  if (!SUPPORT_URL) return null;
+  return html`<a class=${'btn coffee ' + size} href=${SUPPORT_URL} target="_blank" rel="noopener" onClick=${() => sfx.pop()}><${Icon} name="coffee" /> ${label}</a>`;
+}
+
+export function Footer() {
+  return html`<footer class="footer">
+    <div class="wrap">
+      <div class="stack" style="--g:14px;max-width:460px">
+        <a class="logo" href="#/"><i></i><span class="lt">TVDaily</span></a>
+        <p class="small muted" style="margin:0">Tu diario de series, películas, libros y audiolibros. Hecho con cariño y sin anuncios: si te gusta, puedes apoyarlo con un café.</p>
+        <div class="row"><${SupportButton} /></div>
+      </div>
+      <nav class="footer-links">
+        <a href="#/discover">Novedades</a><a href="#/guide">Guía TV</a><a href="#/news">Noticias</a><a href="#/stats">Estadísticas</a>
+        <a href="#/data">Importar y exportar</a><a href="#/settings">Ajustes</a>
+      </nav>
+    </div>
+    <div class="wrap"><span class="count">© ${new Date().getFullYear()} TVDaily · Datos de TVMaze, Wikidata, IMDb, Apple, Google Books y Open Library</span></div>
+  </footer>`;
 }
 
 // Botón con estado de carga.

@@ -1,6 +1,6 @@
 // Vista previa de un resultado de búsqueda / novedad antes de añadirlo.
 import { html, useState, useEffect } from 'preact-standalone';
-import { Modal, Cover, Providers, Spinner, Icon, TypeBadge, ShareButtons } from './ui.js';
+import { Modal, Cover, BgImg, Providers, Spinner, Icon, TypeBadge, ShareButtons } from './ui.js';
 import { Trailer, Soundtrack, CastRow, AudioPreview } from './media.js';
 import { EntryForm } from './entry-form.js';
 import { enrich, toEntryFields, deciderUrl, justwatchUrl, SOURCES } from '../lib/metadata.js';
@@ -47,7 +47,7 @@ export function PreviewModal({ item, onClose }) {
   return html`
     <${Modal} kicker=${d.source && SOURCES[d.source] ? 'Fuente · ' + SOURCES[d.source].name : 'Vista previa'} title=${T.label} onClose=${onClose} color=${T.color} width=${1040} flush>
       <div class="hero in-modal" style=${`--c:${T.color}`}>
-        ${(d.backdrop || d.cover) && html`<div class="bg"><img src=${d.backdrop || d.cover} alt="" style=${d.backdrop ? '' : 'filter:blur(30px) saturate(1.2);transform:scale(1.3)'} /></div>`}
+        ${(d.backdrop || d.cover) && html`<div class="bg"><${BgImg} src=${d.backdrop || d.cover} w=${d.backdrop ? 1200 : 400} style=${d.backdrop ? '' : 'filter:blur(30px) saturate(1.2);transform:scale(1.3)'} /></div>`}
         <div class="wrap">
           <div class="hero-inner">
             <div class="hero-poster" style="width:clamp(120px,15vw,190px)"><${Cover} src=${d.cover} title=${d.title} type=${d.type} /></div>

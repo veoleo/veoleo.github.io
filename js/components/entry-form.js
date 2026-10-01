@@ -2,7 +2,7 @@
 import { html, useState } from 'preact-standalone';
 import { Modal, Stars, Tabs, Switch, Chip, Cover, Icon } from './ui.js';
 import {
-  TYPES, STATUS_KEYS, statusLabel, PLATFORMS, READ_PLACES, LISTEN_PLACES, todayISO, youtubeId, normGenres, uniq,
+  TYPES, statusKeysFor, STATUS_COLORS, statusLabel, PLATFORMS, READ_PLACES, LISTEN_PLACES, todayISO, youtubeId, normGenres, uniq,
 } from '../lib/utils.js';
 import { createEntry, updateEntry, updateList } from '../lib/db.js';
 import { toast, useStore } from '../lib/store.js';
@@ -11,7 +11,6 @@ import { sfx } from '../lib/sound.js';
 import { flash, scan } from '../lib/fx.js';
 import { go } from '../lib/router.js';
 
-const STATUS_COLORS = { completed: 'var(--teal)', in_progress: 'var(--yellow)', planned: 'var(--pink)', abandoned: 'var(--muted)' };
 
 export function EntryForm({ draft, onClose, onSaved }) {
   const { lists } = useStore();
@@ -96,7 +95,7 @@ export function EntryForm({ draft, onClose, onSaved }) {
 
         <div class="field"><span class="label">Estado</span>
           <div class="row" style="--g:8px">
-            ${STATUS_KEYS.map((s) => html`<${Chip} key=${s} on=${f.status === s} color=${STATUS_COLORS[s]}
+            ${statusKeysFor(f.type).map((s) => html`<${Chip} key=${s} on=${f.status === s} color=${STATUS_COLORS[s]}
               onClick=${() => set({ status: s, finishedAt: s === 'completed' && !f.finishedAt ? todayISO() : f.finishedAt })}>${statusLabel(s, f.type)}</${Chip}>`)}
           </div>
           ${f.status === 'abandoned' && html`<span class="small muted">Se guardará en tu lista Abandonadas.</span>`}

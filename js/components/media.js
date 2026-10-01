@@ -43,7 +43,7 @@ export function Soundtrack({ e }) {
     audio.current = a; currentAudio = a; setPlaying(t.preview);
   }
   return html`<div class="ost">
-    <div class="art ${playing ? 'spin' : ''}">${s?.artwork ? html`<img src=${s.artwork} alt=${s.album} />` : html`<div class="gen-poster" style="--gc:var(--pink)"><span>OST</span><b>${e.title}</b></div>`}</div>
+    <div class="art ${playing ? 'spin' : ''}">${s?.artwork ? html`<img src=${s.artwork.replace(/600x600bb/, '320x320bb')} alt=${s.album} />` : html`<div class="gen-poster" style="--gc:var(--pink)"><span>OST</span><b>${e.title}</b></div>`}</div>
     <div>
       ${s && html`<div class="label" style="color:var(--pink)">${s.artist}${s.year ? ` · ${s.year}` : ''}</div><h3 class="h3" style="margin-top:8px">${s.album}</h3>`}
       ${e.composer && html`<p class="muted" style="margin:10px 0 0">Música original de <span style="color:var(--text)">${e.composer}</span></p>`}
