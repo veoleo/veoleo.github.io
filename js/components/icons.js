@@ -1,0 +1,56 @@
+// Iconos de línea con trazos rectos (24x24).
+import { html } from 'preact-standalone';
+
+const P = {
+  home: 'M3 11 12 3l9 8v10h-6v-6H9v6H3z',
+  spark: 'M12 2v6M12 16v6M2 12h6M16 12h6M5 5l4 4M15 15l4 4M19 5l-4 4M9 15l-4 4',
+  grid: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+  search: 'M10.5 3a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM16 16l5 5',
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h1M3 12h1M3 18h1',
+  trophy: 'M7 4h10v5a5 5 0 0 1-10 0zM7 6H3v2a4 4 0 0 0 4 4M17 6h4v2a4 4 0 0 1-4 4M12 14v4M8 21h8M9 18h6',
+  users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6',
+  news: 'M4 4h13v16H6a2 2 0 0 1-2-2zM17 8h3v10a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h3',
+  chart: 'M3 21h18M6 17V10M11 17V5M16 17v-4M21 17V8',
+  plus: 'M12 4v16M4 12h16',
+  close: 'M5 5l14 14M19 5 5 19',
+  check: 'M4 12l5 5L20 6',
+  play: 'M7 4l13 8-13 8z',
+  pause: 'M7 4h4v16H7zM13 4h4v16h-4z',
+  heart: 'M12 20 4 12a4.6 4.6 0 0 1 8-5 4.6 4.6 0 0 1 8 5z',
+  share: 'M16 6l-4-4-4 4M12 2v13M5 12v9h14v-9',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+  download: 'M12 3v13M6 11l6 6 6-6M4 21h16',
+  upload: 'M12 21V8M6 13l6-6 6 6M4 3h16',
+  copy: 'M8 8h12v12H8zM4 16V4h12',
+  edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z',
+  user: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0',
+  logout: 'M15 4h5v16h-5M10 8l-4 4 4 4M6 12h11',
+  sound: 'M4 9h4l5-4v14l-5-4H4zM17 8a5 5 0 0 1 0 8M19.5 5.5a9 9 0 0 1 0 13',
+  mute: 'M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6',
+  refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
+  ext: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+  calendar: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4',
+  eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4',
+  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
+  tv: 'M3 6h18v12H3zM8 21h8M12 18v3',
+  film: 'M4 3h16v18H4zM8 3v18M16 3v18M4 8h4M4 13h4M16 8h4M16 13h4',
+  book: 'M4 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H4zM20 4h-6M20 4v15h-6',
+  headphones: 'M4 15v-3a8 8 0 0 1 16 0v3M4 15h4v6H4zM16 15h4v6h-4z',
+  star: 'M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z',
+  chevron: 'M9 5l7 7-7 7',
+  filter: 'M3 5h18M6 12h12M10 19h4',
+  command: 'M9 6V4a2 2 0 1 0-2 2h10a2 2 0 1 0-2-2v16a2 2 0 1 0 2-2H7a2 2 0 1 0 2 2V6',
+  database: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+  bolt: 'M13 2 4 14h7l-1 8 9-12h-7z',
+  x: 'M4 4l16 16M20 4 4 20',
+  whatsapp: 'M4 20l1.3-4A8 8 0 1 1 8 18.7zM9 9c0 3 3 6 6 6l1-1.5-2-1-1 1c-1 0-2.5-1.5-2.5-2.5l1-1-1-2z',
+  telegram: 'M21 4 3 11l6 2 2 6 3-4 5 4z M9 13l8-6',
+};
+
+export function Icon({ name, size, class: cls = '' }) {
+  const d = P[name] || P.spark;
+  return html`<svg class=${'ico ' + cls} viewBox="0 0 24 24" aria-hidden="true" style=${size ? `width:${size}px;height:${size}px` : ''}><path d=${d} /></svg>`;
+}
