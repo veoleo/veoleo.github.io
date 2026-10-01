@@ -87,9 +87,16 @@ export function GenPoster({ title, type }) {
 // Imagen redimensionada; si falla, la original; si también falla, póster generado.
 export function Cover({ src, title, type, alt = '', w = 360 }) {
   const [stage, setStage] = useState(0);
+  const ref = useRef();
   useEffect(() => setStage(0), [src]);
+  // Si el redimensionador tarda demasiado (pasa en móvil con muchas portadas), se usa la imagen original.
+  useEffect(() => {
+    if (!src || stage !== 0) return;
+    const t = setTimeout(() => { const el = ref.current; if (el && el.getBoundingClientRect().top < innerHeight * 2 && !(el.complete && el.naturalWidth)) setStage(1); }, 6000);
+    return () => clearTimeout(t);
+  }, [src, stage]);
   if (!src || stage > 1) return html`<${GenPoster} title=${title} type=${type} />`;
-  return html`<img src=${stage === 0 ? img(src, w) : src} alt=${alt || title} loading="lazy" decoding="async" referrerpolicy="no-referrer" onError=${() => setStage(stage + 1)} />`;
+  return html`<img ref=${ref} src=${stage === 0 ? img(src, w) : src} alt=${alt || title} loading="lazy" decoding="async" referrerpolicy="no-referrer" onError=${() => setStage(stage + 1)} />`;
 }
 export function BgImg({ src, w = 1400, style = '', alt = '' }) {
   const [stage, setStage] = useState(0);
